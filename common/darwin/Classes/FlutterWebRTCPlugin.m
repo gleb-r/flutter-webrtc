@@ -233,6 +233,14 @@
                 result([FlutterError errorWithCode:[@"Track is class of " stringByAppendingString:[[track class] description]] message:nil details:nil]);
             }
         }
+    } else if ([@"startRecordToFile" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* path = argsMap[@"path"];
+        NSString* videoTrackId = argsMap[@"videoTrackId"];
+        NSNumber* audioTrack = argsMap[@"audioChannel"];
+        NSString* recorderId = argsMap[@"recorderId"];
+        NSLog(@"Start to record video. Path: %@, videoTrackId: %@", path, videoTrackId);
+        
     } else if ([@"setLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];
