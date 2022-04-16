@@ -3,6 +3,7 @@
 #import "FlutterRTCMediaStream.h"
 #import "FlutterRTCDataChannel.h"
 #import "FlutterRTCVideoRenderer.h"
+#import "FlutterRTCVideoRecorder.h"
 #import "AudioUtils.h"
 
 #import <AVFoundation/AVFoundation.h>
@@ -84,6 +85,8 @@
 #endif
     return self;
 }
+
+FlutterRTCVideoRecorder *videoRecorder;
 
 
 - (void)didSessionRouteChange:(NSNotification *)notification {
@@ -240,7 +243,24 @@
         NSNumber* audioTrack = argsMap[@"audioChannel"];
         NSString* recorderId = argsMap[@"recorderId"];
         NSLog(@"Start to record video. Path: %@, videoTrackId: %@", path, videoTrackId);
-        
+        RTCMediaStreamTrack *track = [self trackForId:videoTrackId];
+        if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
+            RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
+            if (videoRecorder == nil) {
+                        videoRecorder = [[ FlutterRTCVideoRecorder alloc] init];
+                    }
+            [videoRecorder startCapture:videoTrack toPath:path result:result];
+        } else {
+            result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
+        }
+    } else if ([@"stopRecordToFile" isEqualToString:call.method]) {
+        if (videoRecorder != nil) {
+            NSLog(@"Stop video rec");
+            [videoRecorder stopCaputre:result];
+        } else {
+            NSLog(@"Cant stop rec, recorder is not init");
+            result(@NO);
+        }
     } else if ([@"setLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];
@@ -454,7 +474,7 @@
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];
         RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
         if (!peerConnection) {
-            result([FlutterError errorWithCode:@"restartIce: peerConnection is nil" message:nil details:nil]);   
+            result([FlutterError errorWithCode:@"restartIce: peerConnection is nil" message:nil details:nil]);
         } else {
             [peerConnection restartIce];
             result(nil);
