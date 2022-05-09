@@ -17,7 +17,6 @@
 -(instancetype) init;
 -(void) startCapture: (RTCVideoTrack *) track
               toPath:(NSString *)path
-        outVideoSize:(CGSize) size
               result:(FlutterResult) result;
 -(void ) stopCaputre: (FlutterResult) result;
 

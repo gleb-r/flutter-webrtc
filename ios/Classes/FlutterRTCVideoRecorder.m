@@ -40,8 +40,7 @@ int i;
 
 
 -(void) startCapture: (RTCVideoTrack *) track toPath:(NSString *)path
-        outVideoSize:(CGSize) size
-        result:(FlutterResult) result {
+              result:(FlutterResult) result {
     if (started) {
         NSLog(@"Recodring already started");
         result(@NO);
@@ -53,13 +52,22 @@ int i;
     videoWriter = [[AVAssetWriter alloc] initWithURL:videoURL
                                             fileType:AVFileTypeMPEG4
                                                error:&error];
-    
+    [videoTrack addRenderer:self];
+
+    result(@YES);
+}
+
+-(void) createWriter: (CGSize) frameSize {
+    if (started) return;
+    NSNumber *width = [NSNumber numberWithDouble:frameSize.width];
+    NSNumber * height = [NSNumber numberWithDouble:frameSize.height];
+    NSLog(@"Creating writer W:%@, H:%@", width, height);
     NSDictionary *videoSettings = [NSDictionary dictionaryWithObjectsAndKeys:
                                    AVVideoCodecH264 ,
                                    AVVideoCodecKey,
-                                   size.width,
+                                   width,
                                    AVVideoWidthKey,
-                                   size.height,
+                                   height,
                                    AVVideoHeightKey,
                                    nil];
     writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:videoSettings];
@@ -74,19 +82,22 @@ int i;
     
     NSLog(@"Capture started");
     NSParameterAssert(videoWriter);
-    [videoTrack addRenderer:self];
+   
     i = 0;
     started = true;
-    result(@YES);
 }
 
 -(void ) stopCaputre: (FlutterResult) result {
-    if (videoTrack == nil || !started) {
+    if (videoTrack == nil) {
         result(@NO);
         return;
     }
-    started = false;
     [videoTrack removeRenderer:self];
+    if (!started) {
+        result(@YES);
+        return;
+    }
+    started = false;
     [writerInput markAsFinished];
     [videoWriter finishWritingWithCompletionHandler:^{
         NSLog(@"Finishing writing");
@@ -101,7 +112,6 @@ int i;
     videoTrack = nil;
     videoWriter = nil;
     adaptor = nil;
-    
     result(@YES);
 }
 
@@ -230,6 +240,9 @@ NSString* getCurrentTime(void) {
 }
 
 - (void)setSize:(CGSize)size {
+    if (!started) {
+        [self createWriter: size];
+    }
     NSLog(@"Set size h:%f, w:%f", size.height, size.width);
     if(_pixelBufferRef == nil || (size.width != _frameSize.width || size.height != _frameSize.height))
     {

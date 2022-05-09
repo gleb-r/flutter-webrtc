@@ -242,18 +242,14 @@ FlutterRTCVideoRecorder *videoRecorder;
         NSString* videoTrackId = argsMap[@"videoTrackId"];
         NSNumber* audioTrack = argsMap[@"audioChannel"];
         NSString* recorderId = argsMap[@"recorderId"];
-        NSNumber* videoWidth = argsMap[@"videoWidth"];
-        NSNumber* videoHeight = argsMap[@"videoHeight"];
-        CGSize videoSize = CGSizeMake( [videoWidth doubleValue] , [videoHeight doubleValue]);
-        
-        NSLog(@"Start to record video. Path: %@, videoTrackId: %@, w: %@, h: %@", path, videoTrackId, videoWidth, videoHeight);
+
         RTCMediaStreamTrack *track = [self trackForId:videoTrackId];
         if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
             RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
             if (videoRecorder == nil) {
                         videoRecorder = [[ FlutterRTCVideoRecorder alloc] init];
                     }
-            [videoRecorder startCapture:videoTrack toPath:path outVideoSize:videoSize result:result];
+            [videoRecorder startCapture:videoTrack toPath:path result:result];
         } else {
             result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
         }

@@ -86,7 +86,11 @@
     free(rgbBuffer);
 
     UIImageOrientation orientation;
+    NSLog(@"frame rotation: %ld", (long)frame.rotation);
     switch (frame.rotation) {
+        case RTCVideoRotation_0:
+            orientation = UIImageOrientationUp;
+            break;;
         case RTCVideoRotation_90:
             orientation = UIImageOrientationRight;
             break;
@@ -95,8 +99,9 @@
             break;
         case RTCVideoRotation_270:
             orientation = UIImageOrientationLeft;
+            break;
         default:
-            orientation = UIImageOrientationUp;
+            [NSException raise:@"wrong orientation" format:@"orientation value: %ld", (long)frame.rotation];
             break;
     }
 
