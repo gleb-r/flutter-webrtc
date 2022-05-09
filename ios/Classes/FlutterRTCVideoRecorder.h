@@ -15,7 +15,9 @@
 
 @interface FlutterRTCVideoRecorder : NSObject<RTCVideoRenderer>
 -(instancetype) init;
--(void) startCapture: (RTCVideoTrack *) track toPath:(NSString *)path
+-(void) startCapture: (RTCVideoTrack *) track
+              toPath:(NSString *)path
+        outVideoSize:(CGSize) size
               result:(FlutterResult) result;
 -(void ) stopCaputre: (FlutterResult) result;
 

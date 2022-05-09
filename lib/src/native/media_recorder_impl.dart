@@ -10,10 +10,15 @@ class MediaRecorderNative extends MediaRecorder {
   final _recorderId = _random.nextInt(0x7FFFFFFF);
 
   @override
-  Future<void> start(String path,
-      {MediaStreamTrack? videoTrack, RecorderAudioChannel? audioChannel
-      // TODO(cloudwebrtc): add codec/quality options
-      }) async {
+  Future<void> start(
+    String path, {
+    MediaStreamTrack? videoTrack,
+    RecorderAudioChannel? audioChannel,
+    int? videoWidth,
+    int? videoHeight,
+
+    // TODO(cloudwebrtc): add codec/quality options
+  }) async {
     if (audioChannel == null && videoTrack == null) {
       throw Exception('Neither audio nor video track were provided');
     }
@@ -22,6 +27,8 @@ class MediaRecorderNative extends MediaRecorder {
       'path': path,
       if (audioChannel != null) 'audioChannel': audioChannel.index,
       if (videoTrack != null) 'videoTrackId': videoTrack.id,
+      'videoWidth': videoWidth,
+      'videoHeight': videoHeight,
       'recorderId': _recorderId
     });
   }

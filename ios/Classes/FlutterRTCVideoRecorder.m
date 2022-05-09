@@ -40,7 +40,8 @@ int i;
 
 
 -(void) startCapture: (RTCVideoTrack *) track toPath:(NSString *)path
-              result:(FlutterResult) result {
+        outVideoSize:(CGSize) size
+        result:(FlutterResult) result {
     if (started) {
         NSLog(@"Recodring already started");
         result(@NO);
@@ -56,9 +57,9 @@ int i;
     NSDictionary *videoSettings = [NSDictionary dictionaryWithObjectsAndKeys:
                                    AVVideoCodecH264 ,
                                    AVVideoCodecKey,
-                                   @480,
+                                   size.width,
                                    AVVideoWidthKey,
-                                   @640,
+                                   size.height,
                                    AVVideoHeightKey,
                                    nil];
     writerInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:videoSettings];
