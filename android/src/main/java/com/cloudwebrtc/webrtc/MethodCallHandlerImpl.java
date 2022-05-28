@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import com.cloudwebrtc.webrtc.detection.MotionDetection;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
 import com.cloudwebrtc.webrtc.record.FrameCapturer;
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult;
@@ -117,12 +118,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private Activity activity;
 
+  private MotionDetection motionDetection;
+
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
                         @NonNull AudioManager audioManager) {
     this.context = context;
     this.textures = textureRegistry;
     this.messenger = messenger;
     this.audioManager = audioManager;
+    motionDetection = new MotionDetection(messenger);
   }
 
   static private void resultError(String method, String error, Result result) {
@@ -535,6 +539,33 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           resultError("captureFrame", "Track is null", result);
         }
         break;
+      case "startMotionDetection": {
+          if (motionDetection == null) {
+              motionDetection = new MotionDetection(messenger);
+          }
+          String motionTrackId = call.argument("trackId");
+          if (motionTrackId != null) {
+              MediaStreamTrack track = getTrackForId(motionTrackId);
+              if (track instanceof VideoTrack) {
+                  motionDetection.starDetection((VideoTrack) track, 5);
+                  result.success(true);
+              } else {
+                  resultError("start motion detection", "It's not video track", result);
+              }
+          } else {
+              resultError("start video detection", "Track is null", result);
+          }
+          break;
+      }
+      case "stopMotionDetection": {
+            if (motionDetection == null) {
+                resultError("stop motion detection", "motion detection is null", result);
+            } else {
+                motionDetection.stopDetection();
+                result.success(true);
+            }
+         break;
+      }
       case "getLocalDescription": {
         String peerConnectionId = call.argument("peerConnectionId");
         PeerConnection peerConnection = getPeerConnection(peerConnectionId);
@@ -1711,7 +1742,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     PeerConnectionObserver pco = mPeerConnectionObservers.get(peerConnectionId);
     if (pco == null || pco.getPeerConnection() == null) {
       resultError("rtpSenderSetTrack", "peerConnection is null", result);
-    } else {      
+    } else {
       MediaStreamTrack track = null;
       if (trackId.length() > 0) {
         track = localTracks.get(trackId);
