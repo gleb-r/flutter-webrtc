@@ -8,6 +8,7 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <WebRTC/WebRTC.h>
+#import <flutter_webrtc/flutter_webrtc-Swift.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wprotocol"
@@ -79,6 +80,7 @@
     self.localStreams = [NSMutableDictionary new];
     self.localTracks = [NSMutableDictionary new];
     self.renders = [[NSMutableDictionary alloc] init];
+    
 #if TARGET_OS_IPHONE
     AVAudioSession *session = [AVAudioSession sharedInstance];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSessionRouteChange:) name:AVAudioSessionRouteChangeNotification object:session];
@@ -87,6 +89,8 @@
 }
 
 FlutterRTCVideoRecorder *videoRecorder;
+MotionDetection* motionDetection;
+
 
 
 - (void)didSessionRouteChange:(NSNotification *)notification {
@@ -261,6 +265,31 @@ FlutterRTCVideoRecorder *videoRecorder;
             NSLog(@"Cant stop rec, recorder is not init");
             result(@NO);
         }
+    } else if ([@"startMotionDetection" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* videoTrackId = argsMap[@"trackId"];
+        NSNumber* detectionLevel = argsMap[@"level"];
+        NSNumber* intervalMs = argsMap[@"interval"];
+        RTCMediaStreamTrack *track = [self trackForId:videoTrackId];
+        if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
+            RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
+            if (motionDetection == nil) {
+                motionDetection = [[MotionDetection alloc] initWithBinaryMessager:_messenger];
+            }
+            NSLog(@"Start motion detection, trackId: %@", videoTrackId);
+            [motionDetection startWithVideoTrack:videoTrack detctionLevel:detectionLevel intervalMs: intervalMs result:result];
+            
+        } else {
+            result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
+        }
+        
+    } else if ([@"stopMotionDetection" isEqualToString:call.method]) {
+        if (motionDetection) {
+            [motionDetection stopWithResult:result];
+        } else {
+            result(@NO);
+        }
+        
     } else if ([@"setLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];

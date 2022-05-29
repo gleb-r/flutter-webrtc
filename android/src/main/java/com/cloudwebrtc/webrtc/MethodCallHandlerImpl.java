@@ -544,10 +544,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
               motionDetection = new MotionDetection(messenger);
           }
           String motionTrackId = call.argument("trackId");
-          if (motionTrackId != null) {
+          Integer detectionLevel = call.argument("level");
+          Integer intervalMs = call.argument("interval");
+          if (motionTrackId != null && detectionLevel != null && intervalMs != null) {
               MediaStreamTrack track = getTrackForId(motionTrackId);
               if (track instanceof VideoTrack) {
-                  motionDetection.starDetection((VideoTrack) track, 5);
+                  motionDetection.starDetection((VideoTrack) track, detectionLevel, intervalMs);
                   result.success(true);
               } else {
                   resultError("start motion detection", "It's not video track", result);

@@ -3,7 +3,7 @@ description: Flutter WebRTC plugin for iOS/Android/Destkop/Web, based on GoogleW
 version: 0.8.7
 homepage: https://github.com/cloudwebrtc/flutter-webrtc
 environment:
-  sdk: '>=2.12.0 <3.0.0'
+  sdk: '>=2.16.0 <3.0.0'
   flutter: '>=1.22.0'
 
 dependencies:
@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
   path_provider: ^2.0.2
   webrtc_interface: ^1.0.4
+  rxdart: ^0.27.3
   
 dev_dependencies:
   flutter_test:
