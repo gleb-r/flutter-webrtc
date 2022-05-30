@@ -549,8 +549,11 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           if (motionTrackId != null && detectionLevel != null && intervalMs != null) {
               MediaStreamTrack track = getTrackForId(motionTrackId);
               if (track instanceof VideoTrack) {
-                  motionDetection.starDetection((VideoTrack) track, detectionLevel, intervalMs);
-                  result.success(true);
+                  boolean startResult = motionDetection.starDetection(
+                          (VideoTrack) track,
+                          detectionLevel,
+                          intervalMs);
+                  result.success(startResult);
               } else {
                   resultError("start motion detection", "It's not video track", result);
               }
@@ -563,10 +566,18 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
             if (motionDetection == null) {
                 resultError("stop motion detection", "motion detection is null", result);
             } else {
-                motionDetection.stopDetection();
-                result.success(true);
+                boolean stopResult = motionDetection.stopDetection();
+                result.success(stopResult);
             }
          break;
+      }
+      case "motionDetectionLevel": {
+          Integer detectionLevel = call.argument("level");
+          if (motionDetection != null && detectionLevel != null) {
+              motionDetection.setDetectionLevel(detectionLevel);
+          }
+          result.success(null);
+          break;
       }
       case "getLocalDescription": {
         String peerConnectionId = call.argument("peerConnectionId");

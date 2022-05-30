@@ -15,13 +15,15 @@ class PixelDetection {
     private var previousMatrix: Array<IntArray>? = null
     private var prevWidth: Int = 0
     private var prevHeight: Int = 0
+    private var prevRotation = 0
+
     private var sizeNotChanged = false
     private var xBoxSize = 0
     private var yBoxSize = 0
     private var pixelInBox = 0
     private var box = RectF(0f, 0f, 0f, 0f)
     private var aspectRatio: Double = 1.0
-    private var prevRotation = 0
+
 
 
     fun detect(
@@ -76,6 +78,13 @@ class PixelDetection {
         buffer.release()
         previousMatrix = currentMatrix
         result(DetectionResult(detectionList, aspectRatio))
+    }
+
+    fun resetPrevious() {
+        previousMatrix = null
+        prevWidth = 0
+        prevHeight = 0
+        prevRotation = 0
     }
 
     private fun RectF.scale(x: Float, y: Float): RectF =

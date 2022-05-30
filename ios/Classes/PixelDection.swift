@@ -16,23 +16,23 @@ public class PixelDetection:NSObject {
     private var yBoxSize = 0
     private var box = CGRect.zero
     private var aspectRatio: Double = 1
-    private var prevRotation: RTCVideoRotation = ._0
-
     
+    private var prevMatrix: [[Int]]?
+    private var prevRotation = RTCVideoRotation._0
     private var prevWidth = 0
     private var prevHeight = 0
     
     private var sizeNotChanged = false
-    private var prevMatrix: [[Int]]?
+    
     
     
     func detect(buffer: RTCI420BufferProtocol,
-                       rotation: RTCVideoRotation,
-                       detectionLevel: Int,
-                       result: @escaping ((DetectionResult) -> Void)) {
+                rotation: RTCVideoRotation,
+                detectionLevel: Int,
+                result: @escaping ((DetectionResult) -> Void)) {
         let width = Int(buffer.width)
         let heigth = Int(buffer.height)
-    
+        
         sizeNotChanged = width == prevWidth && heigth == prevHeight &&  prevRotation == rotation
         if !sizeNotChanged {
             prevWidth = width
@@ -68,6 +68,13 @@ public class PixelDetection:NSObject {
         result(DetectionResult(detectedList: detectedList, aspectRatio: aspectRatio))
     }
     
+    func resetPrevious() {
+        prevRotation = ._0
+        prevWidth = 0
+        prevHeight = 0
+        prevMatrix = nil
+    }
+    
     
     
     private func avetageBoxLuma(yData: UnsafePointer<UInt8>,
@@ -87,13 +94,16 @@ public class PixelDetection:NSObject {
         return color / pixelsInBox
     }
     
-    private func getAspectRatio(width: Int, height: Int, rotation: RTCVideoRotation) -> Double {
-        switch rotation {
-        case ._90:return Double(height)/Double(width)
-        case ._270: return Double(height)/Double(width)
-        default: return Double(width)/Double(height)
+    private func getAspectRatio(
+        width: Int,
+        height: Int,
+        rotation: RTCVideoRotation) -> Double {
+            switch rotation {
+            case ._90:return Double(height)/Double(width)
+            case ._270: return Double(height)/Double(width)
+            default: return Double(width)/Double(height)
+            }
         }
-    }
 }
 
 extension CGRect {
@@ -119,9 +129,17 @@ extension CGRect {
         
         switch rotation {
         case ._90:
-            return CGRect(x: 1 - maxY, y: minX, width: height, height: width)
+            return CGRect(
+                x: 1 - maxY,
+                y: minX,
+                width: height,
+                height: width)
         case ._180:
-            return CGRect(x: 1 - maxX, y: 1 - maxY, width: width , height: height)
+            return CGRect(
+                x: 1 - maxX,
+                y: 1 - maxY,
+                width: width ,
+                height: height)
         default:
             return self
         }

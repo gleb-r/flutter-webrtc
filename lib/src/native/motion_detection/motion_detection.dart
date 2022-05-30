@@ -40,8 +40,17 @@ class MotionDetection {
         .listen(_detectionSubject.add);
   }
 
-  Future<void> stop() async {
-    await WebRTC.invokeMethod('stopMotionDetection', {});
+  Future<bool> stop() async {
+    try {
+      final result = await WebRTC.invokeMethod('stopMotionDetection', {});
+      return result;
+    } catch (ex) {
+      return false;
+    }
+  }
+
+  Future<void> setDetectionLevel(int level) async {
+    await WebRTC.invokeMethod('motionDetectionLevel', {'level': level});
   }
 
   Stream<DetectionResult> get detectionStream => _detectionSubject.stream;

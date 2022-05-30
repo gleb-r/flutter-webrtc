@@ -274,10 +274,14 @@ MotionDetection* motionDetection;
         if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
             RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
             if (motionDetection == nil) {
-                motionDetection = [[MotionDetection alloc] initWithBinaryMessager:_messenger];
+                motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
             }
             NSLog(@"Start motion detection, trackId: %@", videoTrackId);
-            [motionDetection startWithVideoTrack:videoTrack detctionLevel:detectionLevel intervalMs: intervalMs result:result];
+            bool startResult = [motionDetection
+                                startWithVideoTrack:videoTrack
+                                detectionLevel:detectionLevel
+                                intervalMs: intervalMs];
+            result([NSNumber numberWithBool:startResult]);
             
         } else {
             result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
@@ -285,11 +289,18 @@ MotionDetection* motionDetection;
         
     } else if ([@"stopMotionDetection" isEqualToString:call.method]) {
         if (motionDetection) {
-            [motionDetection stopWithResult:result];
+           bool stopResult = [motionDetection stop];
+            result([NSNumber numberWithBool:stopResult]);
         } else {
             result(@NO);
         }
-        
+    } else if ([@"motionDetectionLevel" isEqualToString:call.method]) {
+            NSDictionary* argsMap = call.arguments;
+            NSNumber* level = argsMap[@"level"];
+        if (motionDetection) {
+            [motionDetection setDetectionLevelWithLevel:level];
+        }
+        result(nil);
     } else if ([@"setLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];

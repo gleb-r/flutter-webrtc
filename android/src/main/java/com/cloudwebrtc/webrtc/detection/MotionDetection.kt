@@ -19,24 +19,40 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
     private var prevDetection = 0L
     private var detectionLevel = 5
     private var intervalMs = 200
+    private var started = false
 
     init {
         eventChannel.setStreamHandler(this)
     }
 
-    fun starDetection(videoTrack: VideoTrack, detectionLevel: Int = 5, intervalMs: Int = 200) {
+    fun starDetection(videoTrack: VideoTrack?,
+                      detectionLevel: Int = 5,
+                      intervalMs: Int = 200,
+    ): Boolean {
+        if (videoTrack == null && started) {
+            return false
+        }
+        this.started = true
         this.videoTrack = videoTrack
         this.detectionLevel = detectionLevel
         this.intervalMs = intervalMs
-        videoTrack.addSink(this)
+        videoTrack?.addSink(this)
         Log.d("TAG", "Motion detection started")
+        return true
     }
 
-    fun stopDetection() {
+    fun stopDetection(): Boolean {
+        if (!started) return false;
         videoTrack?.removeSink(this)
         videoTrack = null
+        pixelDetection.resetPrevious()
+        this.started = false
         Log.d("TAG", "Motion detection stopped")
+        return true
+    }
 
+    fun setDetectionLevel(level: Int) {
+        this.detectionLevel = level
     }
 
     override fun onFrame(videoFrame: VideoFrame) {
@@ -58,6 +74,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
     }
 
     private fun sendDetection(detected: DetectionResult) {
+        if (!started) return
         val params = detected.toMap()
         Handler(Looper.getMainLooper()).post {
             eventSink?.success(params)
