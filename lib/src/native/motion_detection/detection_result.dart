@@ -1,7 +1,9 @@
 import 'dart:collection';
 import 'dart:ui';
 
-class DetectionResult {
+import 'package:equatable/equatable.dart';
+
+class DetectionResult extends Equatable {
   DetectionResult(this.detectionList, this.aspectRatio);
 
   factory DetectionResult.fromMap(dynamic event) {
@@ -14,9 +16,12 @@ class DetectionResult {
 
   final List<LumaRect> detectionList;
   final double aspectRatio;
+
+  @override
+  List<Object?> get props => [detectionList, aspectRatio];
 }
 
-class LumaRect {
+class LumaRect extends Equatable {
   LumaRect(this.rect, this.color);
 
   factory LumaRect.fromMap(dynamic object) {
@@ -38,4 +43,7 @@ class LumaRect {
 
   final Rect rect;
   final int color;
+
+  @override
+  List<Object?> get props => [rect, color];
 }
