@@ -43,6 +43,7 @@ class MotionDetection {
   Future<bool> stop() async {
     try {
       final result = await WebRTC.invokeMethod('stopMotionDetection', {});
+      _detectionSubject.add(DetectionResult([], 1));
       return result;
     } catch (ex) {
       return false;
