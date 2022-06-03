@@ -9,49 +9,23 @@ class MotionDetection {
   final _detectionSubject = PublishSubject<DetectionResult>();
   StreamSubscription? _subscription;
 
-  Future<bool> start({
-    required MediaStreamTrack? videoTrack,
-    int detectionLevel = 5,
-    int intervalMs = 200,
-  }) async {
-    if (videoTrack == null) return false;
-
-    try {
-      final success = await WebRTC.invokeMethod('startMotionDetection', {
-        'trackId': videoTrack.id,
-        'level': detectionLevel,
-        'interval': intervalMs,
-      });
-      if (success) {
-        _listenEventChannel();
-      }
-      return success;
-    } catch (ex) {
-      return false;
+  Future<void> setDetectionData(DetectionRequest request) async {
+    await WebRTC.invokeMethod('motionDetection', request.toMap());
+    if (_subscription == null) {
+      _listenEventChannel();
+    }
+    if (!request.enabled) {
+      _detectionSubject.add(DetectionResult([], 1));
     }
   }
 
   late final _eventChannel = EventChannel('FlutterWebRTC/motionDetection');
 
   void _listenEventChannel() {
-    _subscription ??= _eventChannel
+    _subscription = _eventChannel
         .receiveBroadcastStream()
         .map(DetectionResult.fromMap)
         .listen(_detectionSubject.add);
-  }
-
-  Future<bool> stop() async {
-    try {
-      final result = await WebRTC.invokeMethod('stopMotionDetection', {});
-      _detectionSubject.add(DetectionResult([], 1));
-      return result;
-    } catch (ex) {
-      return false;
-    }
-  }
-
-  Future<void> setDetectionLevel(int level) async {
-    await WebRTC.invokeMethod('motionDetectionLevel', {'level': level});
   }
 
   Stream<DetectionResult> get detectionStream => _detectionSubject.stream;

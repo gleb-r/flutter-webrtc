@@ -32,7 +32,7 @@ public class PixelDetection:NSObject {
                 result: @escaping ((DetectionResult) -> Void)) {
         let width = Int(buffer.width)
         let heigth = Int(buffer.height)
-        
+        let detectionDiff = getDiff(level: detectionLevel)
         sizeNotChanged = width == prevWidth && heigth == prevHeight &&  prevRotation == rotation
         if !sizeNotChanged {
             prevWidth = width
@@ -58,7 +58,7 @@ public class PixelDetection:NSObject {
                 currentMatrix[y][x] = luma
                 if sizeNotChanged, let prevMatrix = prevMatrix {
                     let prevLuma = prevMatrix[y][x]
-                    if abs(prevLuma - luma) > detectionLevel {
+                    if abs(prevLuma - luma) > detectionDiff {
                         detectedList.append(LumaRect(rect: rect, luma: luma))
                     }
                 }
@@ -104,6 +104,17 @@ public class PixelDetection:NSObject {
             default: return Double(width)/Double(height)
             }
         }
+    
+    private func getDiff(level: Int) -> Int {
+        switch(level) {
+        case 1: return 25
+        case 2: return 14
+        case 3: return 5
+        case 4: return 3
+        case 5: return 2
+        default: return 5
+        }
+    }
 }
 
 extension CGRect {

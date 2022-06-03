@@ -17,6 +17,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import com.cloudwebrtc.webrtc.detection.DetectionRequest;
+import com.cloudwebrtc.webrtc.detection.DetectionResult;
 import com.cloudwebrtc.webrtc.detection.MotionDetection;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
 import com.cloudwebrtc.webrtc.record.FrameCapturer;
@@ -539,44 +541,20 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           resultError("captureFrame", "Track is null", result);
         }
         break;
-      case "startMotionDetection": {
+      case "motionDetection" :  {
           if (motionDetection == null) {
               motionDetection = new MotionDetection(messenger);
           }
-          String motionTrackId = call.argument("trackId");
-          Integer detectionLevel = call.argument("level");
-          Integer intervalMs = call.argument("interval");
-          if (motionTrackId != null && detectionLevel != null && intervalMs != null) {
-              MediaStreamTrack track = getTrackForId(motionTrackId);
-              if (track instanceof VideoTrack) {
-                  boolean startResult = motionDetection.starDetection(
-                          (VideoTrack) track,
-                          detectionLevel,
-                          intervalMs);
-                  result.success(startResult);
-              } else {
-                  resultError("start motion detection", "It's not video track", result);
-              }
+          VideoTrack track = getLocalVideoTrack();
+          DetectionRequest request = DetectionRequest.Companion.fromMethodCall(call);
+          if (track == null) {
+            resultError(call.method, "Local video track is null", result);
+          } else if (request == null) {
+            resultError(call.method, "Wrong method args", result);
           } else {
-              resultError("start video detection", "Track is null", result);
+            motionDetection.requestMotionDetection(request, track);
+            result.success(null);
           }
-          break;
-      }
-      case "stopMotionDetection": {
-            if (motionDetection == null) {
-                resultError("stop motion detection", "motion detection is null", result);
-            } else {
-                boolean stopResult = motionDetection.stopDetection();
-                result.success(stopResult);
-            }
-         break;
-      }
-      case "motionDetectionLevel": {
-          Integer detectionLevel = call.argument("level");
-          if (motionDetection != null && detectionLevel != null) {
-              motionDetection.setDetectionLevel(detectionLevel);
-          }
-          result.success(null);
           break;
       }
       case "getLocalDescription": {
@@ -1122,6 +1100,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     }
 
     return track;
+  }
+
+  private VideoTrack getLocalVideoTrack() {
+    for (MediaStreamTrack track: localTracks.values()) {
+      if (track.kind().equals("video")) {
+        return (VideoTrack)track;
+      }
+    }
+    return  null;
   }
 
 

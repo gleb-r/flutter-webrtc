@@ -29,34 +29,34 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     }
     
     
-    @objc public func start(videoTrack: RTCVideoTrack,
-                            detectionLevel: NSNumber,
-                            intervalMs: NSNumber) -> Bool {
-        guard !self.started else {
-            return false
+    @objc public func setDetection(videoTrack: RTCVideoTrack,
+                                   request: DetectionRequest
+    ) {
+        if !request.enabled {
+            stop();
+        } else if !started {
+            start(videoTrack: videoTrack)
+        } else {
+            setDetectionParams(request: request)
         }
-        self.started = true
-        self.detectionLevel = detectionLevel.intValue
-        self.detectionInterval = Double(intervalMs.intValue) / 1000
-        videoTrack.add(self)
-        self.videoTrack = videoTrack
-        return true
-        
     }
     
-    @objc public func stop() -> Bool {
-        guard started, let videoTrack = videoTrack else {
-            return false
-        }
-        videoTrack.remove(self)
+    
+    private func start(videoTrack: RTCVideoTrack) {
+        self.started = true
+        videoTrack.add(self)
+        self.videoTrack = videoTrack
+    }
+    
+    @objc public func stop() {
+        videoTrack?.remove(self)
         self.videoTrack = nil
         self.started = false
         self.pixelDetection.resetPrevious()
-        return true
     }
     
-    @objc public func setDetectionLevel(level: NSNumber) {
-        self.detectionLevel = level.intValue
+    @objc public func setDetectionParams(request: DetectionRequest) {
+        self.detectionLevel = request.level
     }
     
     

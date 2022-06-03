@@ -1,6 +1,5 @@
 package com.cloudwebrtc.webrtc.detection
 
-import android.graphics.RectF
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -17,7 +16,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
     private val eventChannel = EventChannel(binaryMessenger, "FlutterWebRTC/motionDetection")
     private var eventSink: EventChannel.EventSink? = null
     private var prevDetection = 0L
-    private var detectionLevel = 5
+    private var detectionLevel = 2
     private var intervalMs = 200
     private var started = false
 
@@ -25,33 +24,33 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
         eventChannel.setStreamHandler(this)
     }
 
-    fun starDetection(videoTrack: VideoTrack?,
-                      detectionLevel: Int = 5,
-                      intervalMs: Int = 200,
-    ): Boolean {
-        if (videoTrack == null && started) {
-            return false
+    fun requestMotionDetection(request: DetectionRequest, videoTrack: VideoTrack)  {
+        if (!request.enabled) {
+            stopDetection()
+            return
         }
-        this.started = true
-        this.videoTrack = videoTrack
-        this.detectionLevel = detectionLevel
-        this.intervalMs = intervalMs
-        videoTrack?.addSink(this)
-        Log.d("TAG", "Motion detection started")
-        return true
+        if (!started) {
+            starDetection(videoTrack)
+        }
+        setDetectionLevel(request.level)
     }
 
-    fun stopDetection(): Boolean {
-        if (!started) return false;
+    private fun starDetection(videoTrack: VideoTrack){
+        this.started = true
+        this.videoTrack = videoTrack
+        videoTrack.addSink(this)
+        Log.d("TAG", "Motion detection started")
+    }
+
+    private fun stopDetection() {
         videoTrack?.removeSink(this)
         videoTrack = null
         pixelDetection.resetPrevious()
         this.started = false
         Log.d("TAG", "Motion detection stopped")
-        return true
     }
 
-    fun setDetectionLevel(level: Int) {
+    private fun setDetectionLevel(level: Int) {
         this.detectionLevel = level
     }
 

@@ -3,7 +3,6 @@ package com.cloudwebrtc.webrtc.detection
 import android.graphics.RectF
 import org.webrtc.VideoFrame
 import java.nio.ByteBuffer
-import java.util.Collections.rotate
 import kotlin.math.abs
 
 class PixelDetection {
@@ -34,6 +33,7 @@ class PixelDetection {
     ) {
         val height = buffer.height
         val width = buffer.width
+        val detectionDiff = getDetectionDiff(detectionLevel)
         sizeNotChanged = width == prevWidth && height == prevHeight && rotation == prevRotation
         if (!sizeNotChanged) {
             this.prevWidth = width
@@ -68,7 +68,7 @@ class PixelDetection {
                 if (sizeNotChanged) {
                     previousMatrix?.let {
                         val prevColor = it[y][x];
-                        if (abs(prevColor - luma) > detectionLevel) {
+                        if (abs(prevColor - luma) > detectionDiff) {
                             detectionList.add(LumaRect(rect, luma))
                         }
                     }
@@ -86,6 +86,16 @@ class PixelDetection {
         prevHeight = 0
         prevRotation = 0
     }
+
+    private fun getDetectionDiff(level: Int) =
+        when (level) {
+            1 -> 25
+            2 -> 14
+            3 -> 5
+            4 -> 3
+            5 -> 2
+            else -> 5
+        }
 
     private fun RectF.scale(x: Float, y: Float): RectF =
         RectF(left * x, top * y, right * x, bottom * y)
