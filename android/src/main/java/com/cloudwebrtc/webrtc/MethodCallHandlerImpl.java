@@ -139,6 +139,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   void dispose() {
     mPeerConnectionObservers.clear();
+    if (motionDetection != null) {
+      motionDetection.dispose();
+      motionDetection = null;
+    }
   }
 
   private void ensureInitialized() {

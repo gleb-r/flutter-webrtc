@@ -30,12 +30,12 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
             return
         }
         if (!started) {
-            starDetection(videoTrack)
+            startDetection(videoTrack)
         }
         setDetectionLevel(request.level)
     }
 
-    private fun starDetection(videoTrack: VideoTrack){
+    private fun startDetection(videoTrack: VideoTrack){
         this.started = true
         this.videoTrack = videoTrack
         videoTrack.addSink(this)
@@ -86,6 +86,15 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
 
     override fun onCancel(arguments: Any?) {
         this.eventSink = null
+    }
+
+    fun dispose() {
+        if (started) {
+            stopDetection()
+            started = false
+        }
+        eventSink = null;
+
     }
 }
 
