@@ -63,7 +63,6 @@ int i;
     if (started) return;
     NSNumber *width = [NSNumber numberWithDouble:frameSize.width];
     NSNumber * height = [NSNumber numberWithDouble:frameSize.height];
-    NSLog(@"Creating writer W:%@, H:%@", width, height);
     NSDictionary *videoSettings = [NSDictionary dictionaryWithObjectsAndKeys:
                                    AVVideoCodecH264 ,
                                    AVVideoCodecKey,
@@ -81,8 +80,7 @@ int i;
     [videoWriter addInput:writerInput];
     [videoWriter startWriting];
     [videoWriter startSessionAtSourceTime:kCMTimeZero];
-    
-    NSLog(@"Capture started");
+
     NSParameterAssert(videoWriter);
     
     i = 0;
@@ -102,13 +100,9 @@ int i;
     started = false;
     [writerInput markAsFinished];
     [videoWriter finishWritingWithCompletionHandler:^{
-        NSLog(@"Finishing writing");
-        if (videoWriter.status != AVAssetWriterStatusFailed) {
-            NSLog(@"Video writing susseded");
-        } else {
+        if (videoWriter.status == AVAssetWriterStatusFailed) {
             NSLog(@"Video writing failed:%@", videoWriter.error);
         }
-        
     }];
     CVPixelBufferPoolRelease(adaptor.pixelBufferPool);
     videoTrack = nil;
@@ -123,11 +117,11 @@ int i;
         return;
     }
     if (!started) {
-        NSLog(@"Render frame skipped, Not started");
+//        NSLog(@"Render frame skipped, Not started");
         return;
     }
     if (!writerInput.readyForMoreMediaData){
-        NSLog(@"Render frame Not ready for more mediaData, skipped");
+//        NSLog(@"Render frame Not ready for more mediaData, skipped");
         return;
     }
     
@@ -253,7 +247,6 @@ NSString* getCurrentTime(void) {
     if (!started) {
         [self createWriter: size];
     }
-    NSLog(@"Set size h:%f, w:%f", size.height, size.width);
     if(_pixelBufferRef == nil || (size.width != _frameSize.width || size.height != _frameSize.height))
     {
         if(_pixelBufferRef){

@@ -84,7 +84,6 @@
     free(rgbBuffer);
 
     UIImageOrientation orientation;
-    NSLog(@"frame rotation: %ld", (long)frame.rotation);
     switch (frame.rotation) {
         case RTCVideoRotation_0:
             orientation = UIImageOrientationUp;
@@ -120,7 +119,7 @@
     NSData *jpgData = UIImageJPEGRepresentation(uiImage, 0.9f);
 
     if ([jpgData writeToFile:_path atomically:NO]) {
-        NSLog(@"File writed successfully to %@", _path);
+//        NSLog(@"File writed successfully to %@", _path);
         _result(nil);
     } else {
         NSLog(@"Failed to write to file");

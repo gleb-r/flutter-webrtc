@@ -259,7 +259,6 @@ MotionDetection* motionDetection;
         }
     } else if ([@"stopRecordToFile" isEqualToString:call.method]) {
         if (videoRecorder != nil) {
-            NSLog(@"Stop video rec");
             [videoRecorder stopCaputre:result];
         } else {
             NSLog(@"Cant stop rec, recorder is not init");

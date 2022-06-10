@@ -17,7 +17,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
     private var eventSink: EventChannel.EventSink? = null
     private var prevDetection = 0L
     private var detectionLevel = 2
-    private var intervalMs = 200
+    private var intervalMs = 300
     private var started = false
 
     init {

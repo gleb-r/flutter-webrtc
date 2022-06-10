@@ -17,7 +17,7 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     private var eventSink :FlutterEventSink?
     private var videoTrack: RTCVideoTrack?
     private var previosTime = CACurrentMediaTime()
-    private var detectionInterval: Double = 0.2
+    private var detectionInterval: Double = 0.3
     private var started = false
     
     @objc public init(binaryMessenger: FlutterBinaryMessenger) {
