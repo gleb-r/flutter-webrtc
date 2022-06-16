@@ -88,7 +88,7 @@
     return self;
 }
 
-FlutterRTCVideoRecorder *videoRecorder;
+VideoRecorder *videoRecorder;
 MotionDetection* motionDetection;
 
 
@@ -251,15 +251,15 @@ MotionDetection* motionDetection;
         if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
             RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
             if (videoRecorder == nil) {
-                        videoRecorder = [[ FlutterRTCVideoRecorder alloc] init];
+                        videoRecorder = [[VideoRecorder alloc] init];
                     }
-            [videoRecorder startCapture:videoTrack toPath:path result:result];
+            [videoRecorder startCapureWithVideoTrack:videoTrack topPath:path result:result];
         } else {
             result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
         }
     } else if ([@"stopRecordToFile" isEqualToString:call.method]) {
         if (videoRecorder != nil) {
-            [videoRecorder stopCaputre:result];
+            [videoRecorder stopCapureWithResult:result];
         } else {
             NSLog(@"Cant stop rec, recorder is not init");
             result(@NO);
