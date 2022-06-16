@@ -385,7 +385,7 @@ MotionDetection* motionDetection;
     } else if ([@"dataChannelSend" isEqualToString:call.method]){
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];
-        NSNumber* dataChannelId = argsMap[@"dataChannelId"];
+        NSString* dataChannelId = argsMap[@"dataChannelId"];
         NSString* type = argsMap[@"type"];
         id data = argsMap[@"data"];
 
