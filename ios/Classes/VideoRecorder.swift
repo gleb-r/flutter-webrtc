@@ -11,26 +11,40 @@ import Flutter
 import CoreVideo
 import AVFoundation
 
+
 public class VideoRecorder:NSObject, RTCVideoRenderer {
-    
-    
     private var videoTrack: RTCVideoTrack?
     
     private var videoWriter: AVAssetWriter?
     private var pixelBuffer: CVPixelBuffer?
+    private var prevFramePixelBuffer: CVPixelBuffer?
     private var frameSize: CGSize?
     private var writerInput: AVAssetWriterInput?
     private var adapter: AVAssetWriterInputPixelBufferAdaptor?
     private var started = false
     private var writerCreated = false
-    private var i: Int64 = 0
     
-    @objc public override init() {
+    private var firstFrameTime: CFTimeInterval?
+    private let eventChannel: FlutterEventChannel
+    private var eventSink :FlutterEventSink?
+    private let motionDetection: MotionDetection
+    
+    
+    
+    
+    @objc public init(binaryMessenger: FlutterBinaryMessenger, motionDetection: MotionDetection) {
+        eventChannel = FlutterEventChannel(
+            name: "FlutterWebRTC/detectionInSaved",
+            binaryMessenger: binaryMessenger)
+        self.motionDetection = motionDetection
         super.init()
+        eventChannel.setStreamHandler(self)
     }
     
     
-    @objc public func startCapure(videoTrack: RTCVideoTrack, topPath path: String, result: FlutterResult) {
+    @objc public func startCapure(videoTrack: RTCVideoTrack,
+                                  topPath path: String,
+                                  result: FlutterResult) {
         guard !started else {
             result(false)
             return
@@ -45,15 +59,18 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             return
         }
         videoTrack.add(self)
+        motionDetection.addListener(listener: self)
         result(true)
     }
     
     @objc public func stopCapure(result: FlutterResult) {
         guard started else {
-            result(false)
+            result(nil)
             return
         }
+        
         videoTrack?.remove(self)
+        motionDetection.removeLister()
         writerInput?.markAsFinished()
         writerCreated = false
         videoWriter?.finishWriting { [weak videoWriter] in
@@ -62,13 +79,18 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
                 NSLog("Video writing failed: %@", writer.error?.localizedDescription ?? "")
             }
         }
-        
+        let duration: Int
+        if let firstFrameTime = firstFrameTime {
+            duration = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
+        } else { duration = 0 }
+        NSLog("Video duration: %d", duration)
         adapter = nil
         started = false
         videoTrack = nil
         videoWriter = nil
         adapter = nil
-        result(true)
+        firstFrameTime = nil
+        result(nil)
         
         
     }
@@ -88,10 +110,19 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
               let pixelBuffer = self.pixelBuffer,
               let writer = writerInput,
               writer.isReadyForMoreMediaData else {
+            NSLog("frame skipper")
             return
         }
-        let persentedTime = CMTimeMake(value: i * 25, timescale: 600)
-        i += 1
+        let frameTime = CACurrentMediaTime()
+        let currentFrameNumer: Int64
+        if let firstFrameTime = firstFrameTime {
+            currentFrameNumer = Int64((frameTime - firstFrameTime) * 600)
+        } else {
+            firstFrameTime = frameTime
+            currentFrameNumer = 0
+        }
+        let persentedTime = CMTimeMake(value: currentFrameNumer, timescale: 600)
+        
         pixelBuffer.copy(from: frame)
         adapter?.append(pixelBuffer, withPresentationTime: persentedTime)
         
@@ -115,7 +146,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         writer.add(writerInput)
         writer.startWriting()
         writer.startSession(atSourceTime: CMTime.zero)
-        i = 0
         writerCreated = true
     }
     
@@ -127,7 +157,50 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
                             nil,
                             &pixelBuffer)
     }
+    
+    private func createPrevBuffer(size: CGSize) {
+        let pixelAttr:NSDictionary = [kCVPixelBufferIOSurfacePropertiesKey: NSDictionary()]
+        CVPixelBufferCreate(kCFAllocatorDefault,
+                            Int(size.width),
+                            Int( size.height),
+                            kCVPixelFormatType_32BGRA,
+                            pixelAttr,
+                            &prevFramePixelBuffer)
+    }
 }
+
+
+extension VideoRecorder: MotionDetectionListener {
+    func onDetected(result: DetectionResult) {
+        guard let firstFrameTime = firstFrameTime else {
+            return
+        }
+        let time = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
+        let frame = DetectionWithTime(squaresList: result.detectedList, time: time)
+        DispatchQueue.main.async { [weak self] in
+            guard let eventSink = self?.eventSink else { return}
+            eventSink(frame.toMap())
+        }
+    }
+}
+
+
+extension VideoRecorder: FlutterStreamHandler {
+    
+    public func onListen(
+        withArguments arguments: Any?,
+        eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+            eventSink = events
+            return nil
+        }
+    
+    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
+        eventSink = nil
+        return nil
+    }
+}
+
+
 
 extension RTCI420BufferProtocol {
     func correctRotation(rotation: RTCVideoRotation) -> RTCI420BufferProtocol {
@@ -153,7 +226,10 @@ extension RTCI420BufferProtocol {
             dstU: UnsafeMutablePointer(mutating:buffer.dataU),
             dstStrideU: buffer.strideU,
             dstV: UnsafeMutablePointer(mutating:buffer.dataV),
-            dstStrideV: buffer.strideV, width: self.width, width: self.height, mode: rotation)
+            dstStrideV: buffer.strideV,
+            width: self.width,
+            width: self.height,
+            mode: rotation)
         return buffer
     }
     
@@ -166,14 +242,17 @@ extension CVPixelBuffer {
         let pixelFormat: OSType = CVPixelBufferGetPixelFormatType(self)
         if pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
             pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange {
+            
             let dstY = CVPixelBufferGetBaseAddressOfPlane(self, 0)
             let dstYStride = CVPixelBufferGetBytesPerRowOfPlane(self, 0)
             let dstUV = CVPixelBufferGetBaseAddressOfPlane(self, 1)
             let dstUYStride = CVPixelBufferGetBytesPerRowOfPlane(self, 1)
             RTCYUVHelper.i420(toNV12: i420Buf.dataY,
                               srcStrideY: i420Buf.strideY,
-                              srcU: i420Buf.dataU, srcStrideU: i420Buf.strideU,
-                              srcV: i420Buf.dataV, srcStrideV: i420Buf.strideV,
+                              srcU: i420Buf.dataU,
+                              srcStrideU: i420Buf.strideU,
+                              srcV: i420Buf.dataV,
+                              srcStrideV: i420Buf.strideV,
                               dstY: dstY,
                               dstStrideY: Int32(dstYStride),
                               dstUV: dstUV,
@@ -184,17 +263,18 @@ extension CVPixelBuffer {
             let dst = CVPixelBufferGetBaseAddress(self)
             let bytesPerRow = CVPixelBufferGetBytesPerRow(self)
             if pixelFormat == kCVPixelFormatType_32BGRA {
-                RTCYUVHelper.i420(toABGR: i420Buf.dataY,
+                
+                RTCYUVHelper.i420(toARGB: i420Buf.dataY,
                                   srcStrideY: i420Buf.strideY,
                                   srcU: i420Buf.dataU,
                                   srcStrideU: i420Buf.strideU,
                                   srcV: i420Buf.dataV,
                                   srcStrideV: i420Buf.strideV,
-                                  dstABGR: dst,
-                                  dstStrideABGR: Int32(bytesPerRow),
+                                  dstARGB: dst,
+                                  dstStrideARGB: Int32(bytesPerRow),
                                   width: i420Buf.width,
                                   height: i420Buf.height)
-            } else if pixelFormat == kCVPixelFormatType_32ARGB { // TODO: chage to BGRA?
+            } else if pixelFormat == kCVPixelFormatType_32ARGB {
                 RTCYUVHelper.i420(toBGRA: i420Buf.dataY,
                                   srcStrideY: i420Buf.strideY,
                                   srcU: i420Buf.dataU,
@@ -205,8 +285,10 @@ extension CVPixelBuffer {
                                   dstStrideBGRA: Int32(bytesPerRow),
                                   width: i420Buf.width,
                                   height: i420Buf.height)
+                
             }
         }
         CVPixelBufferUnlockBaseAddress(self, .readOnly)
     }
 }
+

@@ -250,9 +250,14 @@ MotionDetection* motionDetection;
         RTCMediaStreamTrack *track = [self trackForId:videoTrackId];
         if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
             RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
+            
+            if (motionDetection == nil) {
+                motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
+            }
             if (videoRecorder == nil) {
-                        videoRecorder = [[VideoRecorder alloc] init];
-                    }
+                        videoRecorder = [[VideoRecorder alloc] initWithBinaryMessenger:_messenger
+                                                                       motionDetection:motionDetection];
+            }
             [videoRecorder startCapureWithVideoTrack:videoTrack topPath:path result:result];
         } else {
             result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);

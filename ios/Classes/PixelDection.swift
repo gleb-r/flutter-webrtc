@@ -24,6 +24,20 @@ public class PixelDetection:NSObject {
     
     private var sizeNotChanged = false
     
+    var xCount:Int {
+        switch (prevRotation) {
+        case ._90, ._270: return yBoxes
+        default: return xBoxes
+        }
+    }
+    
+    var yCount:Int {
+        switch(prevRotation) {
+        case ._90, ._270: return xBoxes
+        default: return yBoxes
+        }
+    }
+    
     
     
     func detect(buffer: RTCI420BufferProtocol,
@@ -44,12 +58,10 @@ public class PixelDetection:NSObject {
             aspectRatio = getAspectRatio(width: width, height: heigth, rotation: rotation)
         }
         var currentMatrix = Array(repeating: Array(repeating: 0, count: xBoxes), count: yBoxes)
-        var detectedList = [LumaRect]()
+        
+        var squareList = [Square]()
         for y in 0..<yBoxes {
             for x in 0..<xBoxes {
-                let rect = box.move(dx: x * xBoxSize,dy: y * yBoxSize)
-                    .scale(x: 1/CGFloat(width), y: 1/CGFloat(heigth))
-                    .rotate(rotation: rotation)
                 let luma = avetageBoxLuma(
                     yData: buffer.dataY,
                     rowStride:Int(buffer.strideY) ,
@@ -59,13 +71,21 @@ public class PixelDetection:NSObject {
                 if sizeNotChanged, let prevMatrix = prevMatrix {
                     let prevLuma = prevMatrix[y][x]
                     if abs(prevLuma - luma) > detectionDiff {
-                        detectedList.append(LumaRect(rect: rect, luma: luma))
+                        let square = Square(x, y).rotate(
+                            rotation: rotation,
+                            xCount: xBoxes,
+                            yCount: yBoxes)
+                        squareList.append(square)
                     }
                 }
             }
         }
         prevMatrix = currentMatrix
-        result(DetectionResult(detectedList: detectedList, aspectRatio: aspectRatio))
+        
+        result(DetectionResult(detectedList: squareList,
+                               aspectRatio: aspectRatio,
+                               xCount: xCount,
+                               yCount: yCount))
     }
     
     func resetPrevious() {
@@ -117,6 +137,17 @@ public class PixelDetection:NSObject {
     }
 }
 
+extension Square {
+   func rotate(rotation: RTCVideoRotation, xCount: Int, yCount: Int) -> Square {
+        switch(rotation) {
+        case ._90: return Square(yCount - y - 1 , x)
+        case ._180: return Square(xCount - x - 1, yCount - y - 1)
+        case ._270: return Square(y, xCount - x - 1)
+        default: return self
+        }
+    }
+}
+
 extension CGRect {
     func move(dx:Int, dy: Int) -> CGRect {
         return CGRect(
@@ -156,3 +187,5 @@ extension CGRect {
         }
     }
 }
+
+

@@ -8,12 +8,16 @@
 import Foundation
 
 struct DetectionResult {
-    let detectedList: [LumaRect]
+    let detectedList: [Square]
     let aspectRatio: Double
+    let xCount: Int
+    let yCount: Int
     
     func toMap() -> [String: Any] {
-        return ["detected": detectedList.map{rect in rect.toMap()},
-                "aspect": NSNumber(value: aspectRatio)
+        return ["detected": detectedList.map{sq in sq.toMap()},
+                "aspect": NSNumber(value: aspectRatio),
+                "xCount": NSNumber(value: xCount),
+                "yCount": NSNumber(value: yCount),
         ]
     }
     

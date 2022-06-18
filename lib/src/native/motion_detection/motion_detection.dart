@@ -15,7 +15,7 @@ class MotionDetection {
       _listenEventChannel();
     }
     if (!request.enabled) {
-      _detectionSubject.add(DetectionResult([], 1));
+      _detectionSubject.add(DetectionResult([], 1, 0, 0));
     }
   }
 

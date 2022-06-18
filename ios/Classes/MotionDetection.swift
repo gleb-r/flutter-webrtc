@@ -19,6 +19,7 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     private var previosTime = CACurrentMediaTime()
     private var detectionInterval: Double = 0.3
     private var started = false
+    private var listener: MotionDetectionListener?
     
     @objc public init(binaryMessenger: FlutterBinaryMessenger) {
         eventChannel = FlutterEventChannel(
@@ -59,6 +60,13 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
         self.detectionLevel = request.level
     }
     
+    func addListener(listener: MotionDetectionListener){
+        self.listener = listener
+    }
+    
+    func removeLister() {
+        self.listener = nil
+    }
     
     public func setSize(_ size: CGSize) {
         self.frameSize = size
@@ -72,7 +80,6 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
         if (currentTime - previosTime > CFTimeInterval(detectionInterval)) {
             previosTime = currentTime
             let buffer = frame.buffer.toI420()
-            
             let rotation = frame.rotation
             DispatchQueue.global(qos: .background).async { [weak self] in
                 guard let self = self else { return }
@@ -80,7 +87,13 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
                     buffer: buffer,
                     rotation: rotation,
                     detectionLevel: self.detectionLevel,
-                    result: { [weak self] detected in self?.sendDetectionResult(detected) })
+                    result: { [weak self] detected in
+                        self?.sendDetectionResult(detected)
+                        if !detected.detectedList.isEmpty {
+                            self?.listener?.onDetected(result: detected)
+                        }
+                    }
+                )
             }
         }
     }
@@ -111,6 +124,10 @@ extension MotionDetection: FlutterStreamHandler {
         eventSink = nil
         return nil
     }
+}
+
+protocol MotionDetectionListener {
+    func onDetected(result: DetectionResult)
 }
 
 
