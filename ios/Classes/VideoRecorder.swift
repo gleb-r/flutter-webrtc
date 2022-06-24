@@ -34,7 +34,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     
     @objc public init(binaryMessenger: FlutterBinaryMessenger, motionDetection: MotionDetection) {
         eventChannel = FlutterEventChannel(
-            name: "FlutterWebRTC/detectionInSaved",
+            name: "FlutterWebRTC/detectionOnVideo",
             binaryMessenger: binaryMessenger)
         self.motionDetection = motionDetection
         super.init()
@@ -44,11 +44,13 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     
     @objc public func startCapure(videoTrack: RTCVideoTrack,
                                   topPath path: String,
+                                  enableAudio: Bool,
                                   result: FlutterResult) {
         guard !started else {
             result(false)
             return
         }
+        // TODO: enable audio
         self.started = true
         self.videoTrack = videoTrack
         let url = URL.init(fileURLWithPath: path)
@@ -77,6 +79,8 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             guard let writer = videoWriter else { return }
             if writer.status == .failed {
                 NSLog("Video writing failed: %@", writer.error?.localizedDescription ?? "")
+            } else {
+                NSLog("Video witing fished with: %@", writer.status.rawValue)
             }
         }
         let duration: Int
@@ -90,7 +94,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         videoWriter = nil
         adapter = nil
         firstFrameTime = nil
-        result(nil)
+        result(NSNumber(value: duration))
         
         
     }
@@ -175,8 +179,13 @@ extension VideoRecorder: MotionDetectionListener {
         guard let firstFrameTime = firstFrameTime else {
             return
         }
-        let time = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
-        let frame = DetectionWithTime(squaresList: result.detectedList, time: time)
+        let frameIndex = Int((CACurrentMediaTime() - firstFrameTime) * 1000 / 300)
+        let frame = DetectionWithTime(
+            squaresList: result.detectedList,
+            frameIndex: frameIndex,
+            aspect: result.aspectRatio,
+            xSqCount: result.xCount,
+            ySqCount: result.yCount)
         DispatchQueue.main.async { [weak self] in
             guard let eventSink = self?.eventSink else { return}
             eventSink(frame.toMap())

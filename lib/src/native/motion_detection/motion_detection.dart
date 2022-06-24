@@ -6,7 +6,7 @@ import 'package:rxdart/subjects.dart';
 import '../../../flutter_webrtc.dart';
 
 class MotionDetection {
-  final _detectionSubject = PublishSubject<DetectionResult>();
+  final _detectionSubject = PublishSubject<DetectionFrame>();
   StreamSubscription? _subscription;
 
   Future<void> setDetectionData(DetectionRequest request) async {
@@ -15,7 +15,7 @@ class MotionDetection {
       _listenEventChannel();
     }
     if (!request.enabled) {
-      _detectionSubject.add(DetectionResult([], 1, 0, 0));
+      _detectionSubject.add(DetectionFrame.empty());
     }
   }
 
@@ -24,11 +24,11 @@ class MotionDetection {
   void _listenEventChannel() {
     _subscription = _eventChannel
         .receiveBroadcastStream()
-        .map(DetectionResult.fromMap)
+        .map(DetectionFrame.fromMap)
         .listen(_detectionSubject.add);
   }
 
-  Stream<DetectionResult> get detectionStream => _detectionSubject.stream;
+  Stream<DetectionFrame> get detectionStream => _detectionSubject.stream;
 
   void dispose() {
     _subscription?.cancel();

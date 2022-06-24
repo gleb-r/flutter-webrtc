@@ -240,17 +240,16 @@ MotionDetection* motionDetection;
                 result([FlutterError errorWithCode:[@"Track is class of " stringByAppendingString:[[track class] description]] message:nil details:nil]);
             }
         }
-    } else if ([@"startRecordToFile" isEqualToString:call.method]) {
-        NSDictionary* argsMap = call.arguments;
-        NSString* path = argsMap[@"path"];
-        NSString* videoTrackId = argsMap[@"videoTrackId"];
-        NSNumber* audioTrack = argsMap[@"audioChannel"];
-        NSString* recorderId = argsMap[@"recorderId"];
-
-        RTCMediaStreamTrack *track = [self trackForId:videoTrackId];
-        if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
-            RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
-            
+    } else if ([@"startRecordVideo" isEqualToString:call.method]) {
+        NSDictionary *arguments = call.arguments;
+        NSString *path = arguments[@"path"];
+        NSNumber *isLocal = arguments[@"isLocal"];
+        NSNumber *enableAudio = arguments[@"enableAudio"];
+        bool local = [isLocal boolValue];
+        RTCVideoTrack *videoTrack = local  ? [self getLocalVideoTrack] : [self getRemoteVideoTrack];
+        if (videoTrack == nil) {
+            result([FlutterError errorWithCode:@"Can't find video track" message:nil details:nil]);
+        } else {
             if (motionDetection == nil) {
                 motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
             }
@@ -258,11 +257,11 @@ MotionDetection* motionDetection;
                         videoRecorder = [[VideoRecorder alloc] initWithBinaryMessenger:_messenger
                                                                        motionDetection:motionDetection];
             }
-            [videoRecorder startCapureWithVideoTrack:videoTrack topPath:path result:result];
-        } else {
-            result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
+            [videoRecorder startCapureWithVideoTrack:videoTrack
+                                             topPath:path enableAudio:[enableAudio boolValue]
+                                              result:result];
         }
-    } else if ([@"stopRecordToFile" isEqualToString:call.method]) {
+    } else if ([@"stopRecordVideo" isEqualToString:call.method]) {
         if (videoRecorder != nil) {
             [videoRecorder stopCapureWithResult:result];
         } else {
@@ -1129,6 +1128,24 @@ MotionDetection* motionDetection;
     }
     return nil;
 }
+
+- (RTCVideoTrack*) getRemoteVideoTrack {
+    for (RTCPeerConnection *peerConnection in _peerConnections.allValues) {
+        for (RTCMediaStreamTrack *track in peerConnection.remoteTracks) {
+            if ([track isKindOfClass:[RTCVideoTrack class]]) {
+                return (RTCVideoTrack *)track;
+            }
+        }
+        for (RTCRtpTransceiver *transceiver in peerConnection.transceivers) {
+            if (transceiver.receiver.track != nil
+                && [transceiver.receiver.track isKindOfClass:[RTCVideoTrack class]]) {
+                return (RTCVideoTrack *)transceiver.receiver.track;
+            }
+        }
+    }
+    return nil;
+}
+
 
 
 

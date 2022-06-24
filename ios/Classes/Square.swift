@@ -23,4 +23,8 @@ public class Square: NSObject {
             "y": NSNumber(value: y)
         ]
     }
+    
+    func toString() -> String {
+        return "\(x):\(y)"
+    }
 }
