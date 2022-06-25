@@ -17,13 +17,6 @@ public class Square: NSObject {
         self.y = y
     }
     
-    func toMap() -> [String:NSNumber] {
-        return [
-            "x": NSNumber(value: x),
-            "y": NSNumber(value: y)
-        ]
-    }
-    
     func toString() -> String {
         return "\(x):\(y)"
     }

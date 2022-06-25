@@ -1,6 +1,8 @@
 package com.cloudwebrtc.webrtc.detection
 
 import android.graphics.RectF
+import com.cloudwebrtc.webrtc.detection.PixelDetection.Companion.xBoxes
+import com.cloudwebrtc.webrtc.detection.PixelDetection.Companion.yBoxes
 import org.webrtc.VideoFrame
 import java.nio.ByteBuffer
 import kotlin.math.abs
@@ -23,6 +25,16 @@ class PixelDetection {
     private var box = RectF(0f, 0f, 0f, 0f)
     private var aspectRatio: Double = 1.0
 
+    private fun xCount(rotation: Int) = when (rotation) {
+        90, 270 -> yBoxes
+        else -> xBoxes
+    }
+
+
+    private fun yCount(rotation:Int) = when (rotation) {
+        90, 270 -> xBoxes
+        else -> yBoxes
+    }
 
 
     fun detect(
@@ -42,22 +54,15 @@ class PixelDetection {
             xBoxSize = width / xBoxes
             yBoxSize = height / yBoxes
             pixelInBox = xBoxSize * yBoxSize
-            box = RectF(0f, 0f, xBoxSize.toFloat(), yBoxSize.toFloat())
             aspectRatio = when (rotation) {
                 90, 270 -> height.toDouble() / width
                 else -> width.toDouble() / height
             }
         }
-        val detectionList = mutableListOf<LumaRect>()
-
+        val detectionList = mutableListOf<Square>()
         val currentMatrix = Array(height) { IntArray(width) }
         for (y in 0 until yBoxes) {
             for (x in 0 until xBoxes) {
-                val rect = box.move(x * xBoxSize.toFloat(), y * yBoxSize.toFloat())
-                    .scale(1 / width.toFloat(), 1 / height.toFloat())
-                    .rotate(rotation)
-
-
                 val luma = getBoxAverageLuma(
                     buffer = buffer.dataY,
                     rowStride = buffer.strideY,
@@ -69,7 +74,7 @@ class PixelDetection {
                     previousMatrix?.let {
                         val prevColor = it[y][x];
                         if (abs(prevColor - luma) > detectionDiff) {
-                            detectionList.add(LumaRect(rect, luma))
+                            detectionList.add(Square(x, y).rotate(rotation))
                         }
                     }
                 }
@@ -77,7 +82,11 @@ class PixelDetection {
         }
         buffer.release()
         previousMatrix = currentMatrix
-        result(DetectionResult(detectionList, aspectRatio))
+        result(DetectionResult(
+            detectedList = detectionList,
+            aspectRatio =  aspectRatio,
+            xCount =  xCount(rotation),
+            yCount = yCount(rotation)))
     }
 
     fun resetPrevious() {
@@ -108,6 +117,13 @@ class PixelDetection {
         180 -> RectF(1 - right, 1 - bottom, 1 - left, 1 - top)
         90 -> RectF(1 - bottom, left, 1 - top, right)
         else -> RectF(left, top, right, bottom)
+    }
+
+    private fun Square.rotate(degree: Int): Square = when (degree) {
+        270 -> Square(y, xBoxes - x - 1)
+        180 -> Square(xBoxes - x - 1, yBoxes - 1 - y)
+        90 -> Square(yBoxes - 1 - y, x)
+        else -> this
     }
 
 

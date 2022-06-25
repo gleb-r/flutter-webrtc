@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
 
 import '../../../flutter_webrtc.dart';
 
@@ -21,16 +22,25 @@ class VideoRecorder {
       'enableAudio': enableAudio,
       'interval': detectionIntervalMs,
     });
-    _listenEventChannel();
+    if (isStarted) {
+      _listenEventChannel();
+    }
     return isStarted;
   }
 
   Future<RTCDetectedFrames?> stop() async {
-    final videoDurationMs = await WebRTC.invokeMethod('stopRecordVideo');
+    final resultRaw = await WebRTC.invokeMethod('stopRecordVideo');
     await _detectionSubscription?.cancel();
+    if (resultRaw == null) {
+      return null;
+    }
+    final result = RecorderResult.fromMap(resultRaw);
+    // TODO: return duration and file name if no detection
     final detection = _detectionOnVideo;
-    detection?.durationMs = videoDurationMs;
+    detection?.filePath = result.filePath;
+    detection?.durationMs = result.durationMs;
     detection?.frameIntervalMs = _detectionIntervalMs;
+
     _detectionOnVideo = null;
     return detection;
   }

@@ -29,6 +29,7 @@ import com.cloudwebrtc.webrtc.utils.ConstraintsMap;
 import com.cloudwebrtc.webrtc.utils.EglUtils;
 import com.cloudwebrtc.webrtc.utils.ObjectType;
 import com.cloudwebrtc.webrtc.utils.PermissionUtils;
+import com.cloudwebrtc.webrtc.videoRecorder.VideoRecorder;
 
 import org.webrtc.AudioTrack;
 import org.webrtc.CryptoOptions;
@@ -57,6 +58,7 @@ import org.webrtc.PeerConnectionFactory;
 import org.webrtc.PeerConnectionFactory.InitializationOptions;
 import org.webrtc.PeerConnectionFactory.Options;
 import org.webrtc.RtpSender;
+import org.webrtc.RtpTransceiver;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.SessionDescription.Type;
@@ -122,13 +124,14 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private MotionDetection motionDetection;
 
+  private VideoRecorder videoRecorder;
+
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
                         @NonNull AudioManager audioManager) {
     this.context = context;
     this.textures = textureRegistry;
     this.messenger = messenger;
     this.audioManager = audioManager;
-    motionDetection = new MotionDetection(messenger);
   }
 
   static private void resultError(String method, String error, Result result) {
@@ -530,6 +533,43 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         Integer recorderId = call.argument("recorderId");
         getUserMediaImpl.stopRecording(recorderId);
         result.success(null);
+        break;
+      case "startRecordVideo":
+        String filePath = call.argument(  "path");
+        Boolean isLocal = call.argument("isLocal");
+        Boolean enableAudio = call.argument("enableAudio");
+        Integer detectionIntervalMs = call.argument("interval");
+        if (isLocal == null || filePath ==  null || enableAudio == null) {
+          resultError(call.method, "Wrong arguments in method", result);
+          return;
+        }
+        VideoTrack videoTrack = isLocal ? getLocalVideoTrack() : getRemoteVideoTrack();
+        if (videoTrack == null) {
+          resultError(call.method, "Cant find video track", result);
+          return;
+        }
+        if (motionDetection == null) {
+          motionDetection = new MotionDetection(messenger);
+        }
+        if (videoRecorder == null) {
+          videoRecorder = new VideoRecorder(
+                  messenger,
+                  motionDetection,
+                  (JavaAudioDeviceModule) audioDeviceModule,
+                  context);
+        }
+        AudioChannel audioChannel = null;
+        if (enableAudio) {
+          audioChannel = isLocal ? AudioChannel.INPUT : AudioChannel.OUTPUT;
+        }
+        videoRecorder.startRecording(filePath, videoTrack, audioChannel,result);
+        break;
+      case "stopRecordVideo":
+        if (videoRecorder == null) {
+          resultError(call.method, "Video recorder is not created", result);
+          return;
+        }
+        videoRecorder.stopRecording(result);
         break;
       case "captureFrame":
         String path = call.argument("path");
@@ -1113,6 +1153,24 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       }
     }
     return  null;
+  }
+
+  private  VideoTrack getRemoteVideoTrack() {
+    for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {
+      PeerConnectionObserver pco = entry.getValue();
+        for(MediaStreamTrack track: pco.remoteTracks.values()) {
+          if (track instanceof VideoTrack) {
+            return (VideoTrack) track;
+          }
+        }
+        for(RtpTransceiver transceiver: pco.transceivers.values()) {
+          MediaStreamTrack track = transceiver.getReceiver().track();
+          if (track instanceof VideoTrack) {
+            return (VideoTrack) track;
+          }
+        }
+      }
+    return null;
   }
 
 

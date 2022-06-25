@@ -3,6 +3,7 @@ import 'dart:convert';
 
 class RTCDetectedFrames {
   RTCDetectedFrames({
+    this.filePath,
     required this.rawFrames,
     required this.aspect,
     required this.xSqCount,
@@ -47,6 +48,7 @@ class RTCDetectedFrames {
   final int ySqCount;
   int frameIntervalMs;
   int durationMs;
+  String? filePath;
 
   void addFrame(DetectionWithTime frame) {
     if (aspect != frame.aspect ||

@@ -28,6 +28,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     private let eventChannel: FlutterEventChannel
     private var eventSink :FlutterEventSink?
     private let motionDetection: MotionDetection
+    private var filePath: String?
     
     
     
@@ -62,6 +63,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         }
         videoTrack.add(self)
         motionDetection.addListener(listener: self)
+        self.filePath = path
         result(true)
     }
     
@@ -88,15 +90,20 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             duration = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
         } else { duration = 0 }
         NSLog("Video duration: %d", duration)
+        if let filePath = filePath {
+            let recResult = RecordingResult(filePath: filePath, durationMs: duration)
+            result(recResult.toMap())
+        } else {
+            result(nil)
+        }
         adapter = nil
         started = false
         videoTrack = nil
         videoWriter = nil
         adapter = nil
         firstFrameTime = nil
-        result(NSNumber(value: duration))
-        
-        
+        filePath = nil
+
     }
     
     public func setSize(_ size: CGSize) {

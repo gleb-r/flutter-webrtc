@@ -10,7 +10,7 @@ class DetectionFrame extends Equatable {
     final double aspectRatio = map['aspect'];
     final int xCount = map['xCount'];
     final int yCount = map['yCount'];
-    final rectList = detected.map(Square.fromMap).toList();
+    final rectList = detected.map(Square.fromString).toList();
     return DetectionFrame(rectList, aspectRatio, xCount, yCount);
   }
 
@@ -27,12 +27,6 @@ class DetectionFrame extends Equatable {
 
 class Square extends Equatable {
   Square(this.x, this.y);
-
-  factory Square.fromMap(dynamic map) {
-    final int x = map['x'];
-    final int y = map['y'];
-    return Square(x, y);
-  }
 
   factory Square.fromString(dynamic string) {
     final list = (string as String).split(':');

@@ -5,12 +5,14 @@ import android.os.Looper
 import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
+import org.webrtc.NetworkMonitor.init
 import org.webrtc.VideoFrame
 import org.webrtc.VideoSink
 import org.webrtc.VideoTrack
 import kotlin.concurrent.thread
 
-class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChannel.StreamHandler {
+class MotionDetection(binaryMessenger: BinaryMessenger) :
+    VideoSink, EventChannel.StreamHandler {
     private var videoTrack: VideoTrack? = null
     private val pixelDetection by lazy { PixelDetection() }
     private val eventChannel = EventChannel(binaryMessenger, "FlutterWebRTC/motionDetection")
@@ -19,12 +21,13 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
     private var detectionLevel = 2
     private var intervalMs = 300
     private var started = false
+    private var listener:Listener? = null
 
     init {
         eventChannel.setStreamHandler(this)
     }
 
-    fun requestMotionDetection(request: DetectionRequest, videoTrack: VideoTrack)  {
+    fun requestMotionDetection(request: DetectionRequest, videoTrack: VideoTrack) {
         if (!request.enabled) {
             stopDetection()
             return
@@ -35,7 +38,15 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
         setDetectionLevel(request.level)
     }
 
-    private fun startDetection(videoTrack: VideoTrack){
+    fun addListener(listener: Listener) {
+        this.listener = listener;
+    }
+
+    fun removeListener() {
+        this.listener = null
+    }
+
+    private fun startDetection(videoTrack: VideoTrack) {
         this.started = true
         this.videoTrack = videoTrack
         videoTrack.addSink(this)
@@ -68,7 +79,10 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
                 buffer = i420Buffer,
                 rotation = rotation,
                 detectionLevel = detectionLevel
-            ) { result -> sendDetection(result) }
+            ) { result ->
+                sendDetection(result)
+                listener?.onDetect(result)
+            }
         }
     }
 
@@ -96,6 +110,13 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : VideoSink, EventChanne
         eventSink = null;
 
     }
+
+    interface Listener {
+       fun onDetect(detection: DetectionResult)
+    }
+
 }
+
+
 
 

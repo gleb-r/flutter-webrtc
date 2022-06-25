@@ -54,7 +54,6 @@ public class PixelDetection:NSObject {
             prevRotation = rotation
             xBoxSize = width / xBoxes
             yBoxSize = heigth / yBoxes
-            box = CGRect(x: 0, y: 0, width: xBoxSize, height: yBoxSize)
             aspectRatio = getAspectRatio(width: width, height: heigth, rotation: rotation)
         }
         var currentMatrix = Array(repeating: Array(repeating: 0, count: xBoxes), count: yBoxes)
