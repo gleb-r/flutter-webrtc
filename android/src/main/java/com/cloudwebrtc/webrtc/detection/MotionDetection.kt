@@ -21,7 +21,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     private var detectionLevel = 2
     private var intervalMs = 300
     private var started = false
-    private var listener:Listener? = null
+    private var listener: Listener? = null
 
     init {
         eventChannel.setStreamHandler(this)
@@ -60,6 +60,10 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
         this.started = false
         Log.d("TAG", "Motion detection stopped")
     }
+
+    val frameIntervalMs: Long
+        get() = this.intervalMs.toLong()
+
 
     private fun setDetectionLevel(level: Int) {
         this.detectionLevel = level
@@ -112,7 +116,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     }
 
     interface Listener {
-       fun onDetect(detection: DetectionResult)
+        fun onDetect(detection: DetectionResult)
     }
 
 }

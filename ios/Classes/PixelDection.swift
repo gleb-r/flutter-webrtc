@@ -94,8 +94,6 @@ public class PixelDetection:NSObject {
         prevMatrix = nil
     }
     
-    
-    
     private func avetageBoxLuma(yData: UnsafePointer<UInt8>,
                                 rowStride: Int,
                                 xBoxNum: Int,
@@ -146,45 +144,3 @@ extension Square {
         }
     }
 }
-
-extension CGRect {
-    func move(dx:Int, dy: Int) -> CGRect {
-        return CGRect(
-            x: self.minX + CGFloat(dx),
-            y: self.minY + CGFloat(dy),
-            width: width,
-            height: height)
-    }
-    
-    func scale(x:CGFloat, y:CGFloat) -> CGRect {
-        let xScale = CGFloat(x)
-        let yScale = CGFloat(y)
-        return CGRect(
-            x: self.minX * xScale,
-            y: self.minY * yScale,
-            width: width * xScale,
-            height: height * yScale)
-    }
-    
-    func rotate(rotation:RTCVideoRotation) -> CGRect {
-        
-        switch rotation {
-        case ._90:
-            return CGRect(
-                x: 1 - maxY,
-                y: minX,
-                width: height,
-                height: width)
-        case ._180:
-            return CGRect(
-                x: 1 - maxX,
-                y: 1 - maxY,
-                width: width ,
-                height: height)
-        default:
-            return self
-        }
-    }
-}
-
-

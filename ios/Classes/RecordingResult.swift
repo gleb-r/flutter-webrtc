@@ -7,19 +7,19 @@
 
 import Foundation
 
-public class RecordingResult:NSObject {
-    let filePath: String
+struct RecordingResult{
+    let videoPath: String
+    let imagePath: String
     let durationMs:Int
+    let frameInterval:Int
+    let rotationDegree:Int
     
-    public init(filePath: String, durationMs: Int) {
-        self.durationMs = durationMs
-        self.filePath = filePath
-        super.init()
-    }
-    
-    public func toMap() ->[String: Any] {
-        return ["file": filePath,
-                "duration": NSNumber(value: durationMs)
+    func toMap() ->[String: Any] {
+        return ["video": videoPath,
+                "image": imagePath,
+                "rotation": NSNumber(value: rotationDegree),
+                "duration": NSNumber(value: durationMs),
+                "interval": NSNumber(value: frameInterval)
         ]
     }
 }

@@ -49,8 +49,13 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
     private GlRectDrawer drawer;
     private Surface surface;
     private MediaCodec audioEncoder;
+    private FirstFrameListener listener;
+    private boolean firstFrameCallback = false;
 
-    VideoFileRenderer(String outputFile, final EglBase.Context sharedContext, boolean withAudio) throws IOException {
+    VideoFileRenderer(String outputFile,
+                      final EglBase.Context sharedContext,
+                      boolean withAudio,
+                      FirstFrameListener listener) throws IOException {
         renderThread = new HandlerThread(TAG + "RenderThread");
         renderThread.start();
         renderThreadHandler = new Handler(renderThread.getLooper());
@@ -64,6 +69,7 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
         }
         bufferInfo = new MediaCodec.BufferInfo();
         this.sharedContext = sharedContext;
+        this.listener = listener;
 
         // Create a MediaMuxer.  We can't add the video track and start() the muxer here,
         // because our MediaFormat doesn't have the Magic Goodies.  These can only be
@@ -111,6 +117,10 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
             initVideoEncoder();
         }
         renderThreadHandler.post(() -> renderFrameOnRenderThread(frame));
+        if (!firstFrameCallback && listener != null) {
+            listener.onFirstFrame(frame.getRotation());
+            firstFrameCallback = true;
+        }
     }
 
     private void renderFrameOnRenderThread(VideoFrame frame) {
@@ -294,5 +304,8 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
             drainAudio();
         });
     }
-
 }
+
+
+
+

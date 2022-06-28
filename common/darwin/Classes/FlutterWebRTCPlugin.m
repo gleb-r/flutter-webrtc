@@ -228,7 +228,7 @@ MotionDetection* motionDetection;
         NSDictionary* argsMap = call.arguments;
         NSString* path = argsMap[@"path"];
         NSString* trackId = argsMap[@"trackId"];
-
+        
         RTCMediaStreamTrack *track = [self trackForId: trackId];
         if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
             RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
@@ -242,7 +242,8 @@ MotionDetection* motionDetection;
         }
     } else if ([@"startRecordVideo" isEqualToString:call.method]) {
         NSDictionary *arguments = call.arguments;
-        NSString *path = arguments[@"path"];
+        NSString *videoPath = arguments[@"videoPath"];
+        NSString *imagePath = arguments[@"imagePath"];
         NSNumber *isLocal = arguments[@"isLocal"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
         bool local = [isLocal boolValue];
@@ -254,19 +255,22 @@ MotionDetection* motionDetection;
                 motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
             }
             if (videoRecorder == nil) {
-                        videoRecorder = [[VideoRecorder alloc] initWithBinaryMessenger:_messenger
-                                                                       motionDetection:motionDetection];
+                videoRecorder = [[VideoRecorder alloc] initWithBinaryMessenger:_messenger
+                                                               motionDetection:motionDetection];
             }
             [videoRecorder startCapureWithVideoTrack:videoTrack
-                                             topPath:path enableAudio:[enableAudio boolValue]
+                                           videoPath:videoPath
+                                           imagePath:imagePath
+                                         enableAudio:[enableAudio boolValue]
                                               result:result];
         }
     } else if ([@"stopRecordVideo" isEqualToString:call.method]) {
         if (videoRecorder != nil) {
             [videoRecorder stopCapureWithResult:result];
         } else {
-            NSLog(@"Cant stop rec, recorder is not init");
-            result(@NO);
+            result([FlutterError errorWithCode:[call method]
+                                       message:@"Can't stop record, reorder is nil"
+                                       details:nil]);
         }
     } else if ([@"motionDetection" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;

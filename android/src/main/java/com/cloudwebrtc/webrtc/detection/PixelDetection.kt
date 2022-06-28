@@ -1,8 +1,5 @@
 package com.cloudwebrtc.webrtc.detection
 
-import android.graphics.RectF
-import com.cloudwebrtc.webrtc.detection.PixelDetection.Companion.xBoxes
-import com.cloudwebrtc.webrtc.detection.PixelDetection.Companion.yBoxes
 import org.webrtc.VideoFrame
 import java.nio.ByteBuffer
 import kotlin.math.abs
@@ -22,7 +19,6 @@ class PixelDetection {
     private var xBoxSize = 0
     private var yBoxSize = 0
     private var pixelInBox = 0
-    private var box = RectF(0f, 0f, 0f, 0f)
     private var aspectRatio: Double = 1.0
 
     private fun xCount(rotation: Int) = when (rotation) {
@@ -105,19 +101,6 @@ class PixelDetection {
             5 -> 2
             else -> 5
         }
-
-    private fun RectF.scale(x: Float, y: Float): RectF =
-        RectF(left * x, top * y, right * x, bottom * y)
-
-    private fun RectF.move(x: Float, y: Float): RectF =
-        RectF(left + x, top + y, right + x, bottom + y)
-
-    private fun RectF.rotate(degree: Int): RectF = when (degree) {
-        270 -> RectF(top, 1 - right, bottom, 1 - left)
-        180 -> RectF(1 - right, 1 - bottom, 1 - left, 1 - top)
-        90 -> RectF(1 - bottom, left, 1 - top, right)
-        else -> RectF(left, top, right, bottom)
-    }
 
     private fun Square.rotate(degree: Int): Square = when (degree) {
         270 -> Square(y, xBoxes - x - 1)

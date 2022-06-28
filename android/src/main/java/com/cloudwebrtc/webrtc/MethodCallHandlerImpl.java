@@ -535,11 +535,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         result.success(null);
         break;
       case "startRecordVideo":
-        String filePath = call.argument(  "path");
+        String videoPath = call.argument(  "videoPath");
+        String imagePath = call.argument(  "imagePath");
         Boolean isLocal = call.argument("isLocal");
         Boolean enableAudio = call.argument("enableAudio");
         Integer detectionIntervalMs = call.argument("interval");
-        if (isLocal == null || filePath ==  null || enableAudio == null) {
+        if (isLocal == null || videoPath ==  null || imagePath == null || enableAudio == null ) {
           resultError(call.method, "Wrong arguments in method", result);
           return;
         }
@@ -562,7 +563,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         if (enableAudio) {
           audioChannel = isLocal ? AudioChannel.INPUT : AudioChannel.OUTPUT;
         }
-        videoRecorder.startRecording(filePath, videoTrack, audioChannel,result);
+        videoRecorder.startRecording(videoPath, imagePath, videoTrack, audioChannel,result);
         break;
       case "stopRecordVideo":
         if (videoRecorder == null) {

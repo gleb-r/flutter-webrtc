@@ -29,6 +29,10 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
         eventChannel.setStreamHandler(self)
     }
     
+    var frameIntervalMs: Int {
+       Int(detectionInterval * 1000)
+    }
+    
     
     @objc public func setDetection(videoTrack: RTCVideoTrack,
                                    request: DetectionRequest

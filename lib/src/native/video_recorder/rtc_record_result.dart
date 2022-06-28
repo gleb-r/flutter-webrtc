@@ -1,9 +1,54 @@
 import 'dart:collection';
 import 'dart:convert';
 
+import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
+
+class RTCRecordResult {
+  RTCRecordResult(
+      {required this.videoPath,
+      required this.imagePath,
+      required this.detectedFrames,
+      required this.frameRotation,
+      required this.frameInterval,
+      required this.durationMs});
+
+  factory RTCRecordResult.from(
+      RecorderResult result, RTCDetectedFrames? frames) {
+    return RTCRecordResult(
+      videoPath: result.videoPath,
+      imagePath: result.imagePath,
+      detectedFrames: frames,
+      frameRotation: result.frameRotation,
+      frameInterval: result.frameInterval,
+      durationMs: result.durationMs,
+    );
+  }
+
+  // factory RTCRecordResult.fromJson(dynamic json) {
+  //   final map = Map<String, dynamic>.from(json as Map);
+  //   final String videoPath = map['video'];
+  //   final String imagePath = map['image'];
+  //   final dynamic detectedRaw = map['detected'];
+  //   RTCDetectedFrames? detectedFrames;
+  //   if (detectedRaw != null) {
+  //     detectedFrames = RTCDetectedFrames.fromMap(detectedRaw);
+  //   }
+  //   return RTCRecordResult(
+  //       videoPath: videoPath,
+  //       imagePath: imagePath,
+  //       detectedFrames: detectedFrames);
+  // }
+
+  final String videoPath;
+  final String imagePath;
+  final RTCDetectedFrames? detectedFrames;
+  final int durationMs;
+  final int frameInterval;
+  final int frameRotation;
+}
+
 class RTCDetectedFrames {
   RTCDetectedFrames({
-    this.filePath,
     required this.rawFrames,
     required this.aspect,
     required this.xSqCount,
@@ -48,7 +93,6 @@ class RTCDetectedFrames {
   final int ySqCount;
   int frameIntervalMs;
   int durationMs;
-  String? filePath;
 
   void addFrame(DetectionWithTime frame) {
     if (aspect != frame.aspect ||

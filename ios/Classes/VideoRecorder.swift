@@ -28,7 +28,12 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     private let eventChannel: FlutterEventChannel
     private var eventSink :FlutterEventSink?
     private let motionDetection: MotionDetection
-    private var filePath: String?
+    private var videoPath: String?
+    private var imagePath: String?
+    private var imageSaved = false
+    private var rotation = RTCVideoRotation._0
+    
+    private static let TIME_SCALE: Int32 = 600
     
     
     
@@ -44,7 +49,8 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     
     
     @objc public func startCapure(videoTrack: RTCVideoTrack,
-                                  topPath path: String,
+                                  videoPath: String,
+                                  imagePath: String,
                                   enableAudio: Bool,
                                   result: FlutterResult) {
         guard !started else {
@@ -54,22 +60,30 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         // TODO: enable audio
         self.started = true
         self.videoTrack = videoTrack
-        let url = URL.init(fileURLWithPath: path)
+        self.imageSaved = false
+        let videoUrl = URL.init(fileURLWithPath: videoPath)
         do {
-            videoWriter = try AVAssetWriter.init(outputURL: url, fileType: AVFileType.mp4)
+            videoWriter = try AVAssetWriter.init(outputURL: videoUrl, fileType: AVFileType.mp4)
         } catch {
-            result(FlutterError(code: "failed to create writer", message: error.localizedDescription, details: nil))
+            result(FlutterError(code: "failed to create writer",
+                                message: error.localizedDescription,
+                                details: nil))
             return
         }
         videoTrack.add(self)
         motionDetection.addListener(listener: self)
-        self.filePath = path
+        self.videoPath = videoPath
+        self.imagePath = imagePath
         result(true)
     }
     
     @objc public func stopCapure(result: FlutterResult) {
-        guard started else {
-            result(nil)
+        guard started,
+              let videofilePath = videoPath,
+              let imagePath = self.imagePath else {
+            result(FlutterError(code: "Stop recorder error",
+                                message: "Can't stop, is not started",
+                                details: nil))
             return
         }
         
@@ -80,30 +94,39 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         videoWriter?.finishWriting { [weak videoWriter] in
             guard let writer = videoWriter else { return }
             if writer.status == .failed {
+                // TODO: send by event channel
                 NSLog("Video writing failed: %@", writer.error?.localizedDescription ?? "")
             } else {
                 NSLog("Video witing fished with: %@", writer.status.rawValue)
             }
         }
-        let duration: Int
+        
+        let durationMs: Int
         if let firstFrameTime = firstFrameTime {
-            duration = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
-        } else { duration = 0 }
-        NSLog("Video duration: %d", duration)
-        if let filePath = filePath {
-            let recResult = RecordingResult(filePath: filePath, durationMs: duration)
+            durationMs = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
+        } else { durationMs = 0 }
+        
+        if imageSaved {
+            let recResult = RecordingResult(videoPath: videofilePath,
+                                            imagePath: imagePath,
+                                            durationMs: durationMs,
+                                            frameInterval: motionDetection.frameIntervalMs,
+                                            rotationDegree: rotation.rawValue)
             result(recResult.toMap())
+            
         } else {
-            result(nil)
+            result(FlutterError(code: "Stop recorder error",
+                                message: "Image is not saved",
+                                details: nil))
         }
-        adapter = nil
         started = false
+        adapter = nil
         videoTrack = nil
         videoWriter = nil
         adapter = nil
         firstFrameTime = nil
-        filePath = nil
-
+        self.videoPath = nil
+        self.imagePath = nil
     }
     
     public func setSize(_ size: CGSize) {
@@ -117,27 +140,34 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     }
     
     public func renderFrame(_ frame: RTCVideoFrame?) {
+        if !imageSaved, let imagePath = self.imagePath,
+           let frame = frame {
+            imageSaved = frame.saveInFile(filePath: imagePath)
+            self.rotation = frame.rotation
+        }
         guard started, let frame = frame,
               let pixelBuffer = self.pixelBuffer,
               let writer = writerInput,
               writer.isReadyForMoreMediaData else {
-            NSLog("frame skipper")
             return
         }
         let frameTime = CACurrentMediaTime()
         let currentFrameNumer: Int64
         if let firstFrameTime = firstFrameTime {
-            currentFrameNumer = Int64((frameTime - firstFrameTime) * 600)
+            currentFrameNumer = Int64((frameTime - firstFrameTime) * Double(Self.TIME_SCALE))
         } else {
             firstFrameTime = frameTime
             currentFrameNumer = 0
         }
-        let persentedTime = CMTimeMake(value: currentFrameNumer, timescale: 600)
+        let persentedTime = CMTimeMake(value: currentFrameNumer,
+                                       timescale: Self.TIME_SCALE)
         
         pixelBuffer.copy(from: frame)
         adapter?.append(pixelBuffer, withPresentationTime: persentedTime)
         
     }
+    
+    
     
     private func createWriter(size: CGSize) {
         
@@ -186,7 +216,8 @@ extension VideoRecorder: MotionDetectionListener {
         guard let firstFrameTime = firstFrameTime else {
             return
         }
-        let frameIndex = Int((CACurrentMediaTime() - firstFrameTime) * 1000 / 300)
+        let frameIntervalMs = motionDetection.frameIntervalMs
+        let frameIndex = Int((CACurrentMediaTime() - firstFrameTime) * 1000) / frameIntervalMs
         let frame = DetectionWithTime(
             squaresList: result.detectedList,
             frameIndex: frameIndex,
@@ -216,6 +247,26 @@ extension VideoRecorder: FlutterStreamHandler {
     }
 }
 
+extension RTCVideoFrame {
+    func saveInFile(filePath: String) -> Bool {
+        let imageUrl = URL.init(fileURLWithPath: filePath)
+        let uiImage: UIImage = FlutterRTCFrameCapturer.convertFrame(toUIImage: self)
+        let jpgData = uiImage.jpegData(compressionQuality: 0.9)
+        guard let jpgData = jpgData else {
+            NSLog("Can't save image")
+            // TODO: stop recording and return error
+            return false
+        }
+        do {
+            try jpgData.write(to: imageUrl)
+        } catch {
+            // TODO: stop recording and return error
+            NSLog("Image write error: %@", error.localizedDescription)
+            return false
+        }
+        return true
+    }
+}
 
 
 extension RTCI420BufferProtocol {
@@ -307,4 +358,6 @@ extension CVPixelBuffer {
         CVPixelBufferUnlockBaseAddress(self, .readOnly)
     }
 }
+
+
 

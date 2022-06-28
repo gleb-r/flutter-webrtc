@@ -1,6 +1,7 @@
 package com.cloudwebrtc.webrtc.record;
 
 import androidx.annotation.Nullable;
+
 import android.util.Log;
 
 import com.cloudwebrtc.webrtc.utils.EglUtils;
@@ -17,11 +18,17 @@ public class MediaRecorderImpl {
     private VideoFileRenderer videoFileRenderer;
     private boolean isRunning = false;
     private File recordFile;
+    private FirstFrameListener listener;
 
-    public MediaRecorderImpl(Integer id, @Nullable VideoTrack videoTrack, @Nullable AudioSamplesInterceptor audioInterceptor) {
+    public MediaRecorderImpl(
+            Integer id,
+            @Nullable VideoTrack videoTrack,
+            @Nullable AudioSamplesInterceptor audioInterceptor,
+            @Nullable FirstFrameListener listener) {
         this.id = id;
         this.videoTrack = videoTrack;
         this.audioInterceptor = audioInterceptor;
+        this.listener = listener;
     }
 
     public void startRecording(File file) throws Exception {
@@ -33,9 +40,10 @@ public class MediaRecorderImpl {
         file.getParentFile().mkdirs();
         if (videoTrack != null) {
             videoFileRenderer = new VideoFileRenderer(
-                file.getAbsolutePath(),
-                EglUtils.getRootEglBaseContext(),
-                audioInterceptor != null
+                    file.getAbsolutePath(),
+                    EglUtils.getRootEglBaseContext(),
+                    audioInterceptor != null,
+                    listener
             );
             videoTrack.addSink(videoFileRenderer);
             if (audioInterceptor != null)
@@ -49,7 +57,9 @@ public class MediaRecorderImpl {
         }
     }
 
-    public File getRecordFile() { return recordFile; }
+    public File getRecordFile() {
+        return recordFile;
+    }
 
     public void stopRecording() {
         isRunning = false;

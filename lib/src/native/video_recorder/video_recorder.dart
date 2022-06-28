@@ -7,20 +7,21 @@ import '../../../flutter_webrtc.dart';
 
 class VideoRecorder {
   RTCDetectedFrames? _detectionOnVideo;
-  var _detectionIntervalMs = 300;
+
+  late final _eventChannel = EventChannel('FlutterWebRTC/detectionOnVideo');
+  StreamSubscription? _detectionSubscription;
 
   Future<bool> start({
-    required String path,
+    required String videoPath,
+    required String imagePath,
     required bool isLocal,
     required bool enableAudio,
-    int detectionIntervalMs = 300,
   }) async {
-    _detectionIntervalMs = detectionIntervalMs;
     final isStarted = await WebRTC.invokeMethod('startRecordVideo', {
-      'path': path,
+      'videoPath': videoPath,
+      'imagePath': imagePath,
       'isLocal': isLocal,
       'enableAudio': enableAudio,
-      'interval': detectionIntervalMs,
     });
     if (isStarted) {
       _listenEventChannel();
@@ -28,25 +29,17 @@ class VideoRecorder {
     return isStarted;
   }
 
-  Future<RTCDetectedFrames?> stop() async {
+  Future<RTCRecordResult> stop() async {
     final resultRaw = await WebRTC.invokeMethod('stopRecordVideo');
+    // TODO: listen for write complete event
     await _detectionSubscription?.cancel();
-    if (resultRaw == null) {
-      return null;
-    }
     final result = RecorderResult.fromMap(resultRaw);
-    // TODO: return duration and file name if no detection
     final detection = _detectionOnVideo;
-    detection?.filePath = result.filePath;
     detection?.durationMs = result.durationMs;
-    detection?.frameIntervalMs = _detectionIntervalMs;
-
+    detection?.frameIntervalMs = result.frameInterval;
     _detectionOnVideo = null;
-    return detection;
+    return RTCRecordResult.from(result, detection);
   }
-
-  late final _eventChannel = EventChannel('FlutterWebRTC/detectionOnVideo');
-  StreamSubscription? _detectionSubscription;
 
   void _listenEventChannel() {
     _detectionSubscription = _eventChannel
