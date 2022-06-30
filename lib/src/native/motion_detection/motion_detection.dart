@@ -8,6 +8,7 @@ import '../../../flutter_webrtc.dart';
 class MotionDetection {
   final _detectionSubject = PublishSubject<DetectionFrame>();
   StreamSubscription? _subscription;
+  bool isPaused = false;
 
   Future<void> setDetectionData(DetectionRequest request) async {
     await WebRTC.invokeMethod('motionDetection', request.toMap());
@@ -19,18 +20,30 @@ class MotionDetection {
     }
   }
 
+  void pause(Duration duration) {
+    isPaused = true;
+    _detectionSubject.add(DetectionFrame.empty());
+    Future.delayed(duration).then((_) => isPaused = false);
+  }
+
   late final _eventChannel = EventChannel('FlutterWebRTC/motionDetection');
 
   void _listenEventChannel() {
     _subscription = _eventChannel
         .receiveBroadcastStream()
         .map(DetectionFrame.fromMap)
-        .listen(_detectionSubject.add);
+        .listen((detection) {
+      if (!isPaused) {
+        _detectionSubject.add(detection);
+      }
+    });
   }
 
   Stream<DetectionFrame> get detectionStream => _detectionSubject.stream;
 
   void dispose() {
+    final disableRequest = DetectionRequest(false, null);
+    WebRTC.invokeMethod('motionDetection', disableRequest.toMap());
     _subscription?.cancel();
     _detectionSubject.close();
   }
