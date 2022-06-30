@@ -24,21 +24,6 @@ class RTCRecordResult {
     );
   }
 
-  // factory RTCRecordResult.fromJson(dynamic json) {
-  //   final map = Map<String, dynamic>.from(json as Map);
-  //   final String videoPath = map['video'];
-  //   final String imagePath = map['image'];
-  //   final dynamic detectedRaw = map['detected'];
-  //   RTCDetectedFrames? detectedFrames;
-  //   if (detectedRaw != null) {
-  //     detectedFrames = RTCDetectedFrames.fromMap(detectedRaw);
-  //   }
-  //   return RTCRecordResult(
-  //       videoPath: videoPath,
-  //       imagePath: imagePath,
-  //       detectedFrames: detectedFrames);
-  // }
-
   final String videoPath;
   final String imagePath;
   final RTCDetectedFrames? detectedFrames;
