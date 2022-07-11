@@ -276,17 +276,23 @@ MotionDetection* motionDetection;
         NSDictionary* argsMap = call.arguments;
         DetectionRequest* request = [DetectionRequest fromArgs:argsMap];
         RTCVideoTrack* videoTrack = [self getLocalVideoTrack];
-        if (argsMap == nil) {
+        if (argsMap == nil || request == nil) {
             result([FlutterError errorWithCode:@"Wrong arags in motionDetection" message:nil details:nil]);
-        } else if (videoTrack == nil) {
-            result([FlutterError errorWithCode:@"No local VideoTrackin motionDetection" message:nil details:nil]);
-        } else {
-            if (motionDetection == nil) {
-                motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
-            }
-            [motionDetection setDetectionWithVideoTrack:videoTrack request:request];
-            result(nil);
+            return;
         }
+        if (videoTrack == nil) {
+            result([FlutterError errorWithCode:@"No local VideoTrackin motionDetection" message:nil details:nil]);
+            return;
+        } if (motionDetection == nil) {
+            if (![request enabled]) {
+                result(nil);
+                return;
+            }
+            motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
+        }
+        [motionDetection setDetectionWithVideoTrack:videoTrack request:request];
+        result(nil);
+        
     } else if ([@"setLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];

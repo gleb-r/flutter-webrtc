@@ -12,7 +12,7 @@ class MotionDetection {
 
   Future<void> setDetectionData(DetectionRequest request) async {
     await WebRTC.invokeMethod('motionDetection', request.toMap());
-    if (_subscription == null) {
+    if (_subscription == null && request.enabled) {
       _listenEventChannel();
     }
     if (!request.enabled) {
@@ -42,7 +42,7 @@ class MotionDetection {
   Stream<DetectionFrame> get detectionStream => _detectionSubject.stream;
 
   void dispose() {
-    final disableRequest = DetectionRequest(false, null);
+    final disableRequest = DetectionRequest(false, 2);
     WebRTC.invokeMethod('motionDetection', disableRequest.toMap());
     _subscription?.cancel();
     _detectionSubject.close();

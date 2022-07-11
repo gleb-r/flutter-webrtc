@@ -8,7 +8,7 @@
 import Foundation
 
 public class DetectionRequest: NSObject {
-    let enabled: Bool
+    @objc public let enabled: Bool
     let level: Int
     
     init(enabled: Bool, level: Int) {
@@ -16,6 +16,8 @@ public class DetectionRequest: NSObject {
         self.level = level
         super.init()
     }
+    
+  
     
     @objc  public static  func from(args: [String: Any]) -> DetectionRequest? {
         guard  let enabled = args["enabled"] as? NSNumber,

@@ -54,6 +54,7 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     }
     
     @objc public func stop() {
+        guard started else { return }
         videoTrack?.remove(self)
         self.videoTrack = nil
         self.started = false

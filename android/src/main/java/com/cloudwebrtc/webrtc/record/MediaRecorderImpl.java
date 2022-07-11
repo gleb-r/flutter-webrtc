@@ -43,6 +43,7 @@ public class MediaRecorderImpl {
                     file.getAbsolutePath(),
                     EglUtils.getRootEglBaseContext(),
                     audioInterceptor != null,
+                    false,
                     listener
             );
             videoTrack.addSink(videoFileRenderer);

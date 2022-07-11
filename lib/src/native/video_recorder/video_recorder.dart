@@ -16,12 +16,14 @@ class VideoRecorder {
     required String imagePath,
     required bool isLocal,
     required bool enableAudio,
+    required bool directAudio,
   }) async {
     final isStarted = await WebRTC.invokeMethod('startRecordVideo', {
       'videoPath': videoPath,
       'imagePath': imagePath,
       'isLocal': isLocal,
       'enableAudio': enableAudio,
+      'directAudio': directAudio,
     });
     if (isStarted) {
       _listenEventChannel();

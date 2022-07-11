@@ -1,9 +1,12 @@
 package com.cloudwebrtc.webrtc.record;
 
+import android.media.AudioFormat;
+import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
+import android.media.MediaRecorder;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -20,7 +23,7 @@ import org.webrtc.audio.JavaAudioDeviceModule.SamplesReadyCallback;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
+public class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
     private static final String TAG = "VideoFileRenderer";
     private final HandlerThread renderThread;
     private final Handler renderThreadHandler;
@@ -52,10 +55,11 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
     private FirstFrameListener listener;
     private boolean firstFrameCallback = false;
 
-    VideoFileRenderer(String outputFile,
-                      final EglBase.Context sharedContext,
-                      boolean withAudio,
-                      FirstFrameListener listener) throws IOException {
+    public VideoFileRenderer(String outputFile,
+                             final EglBase.Context sharedContext,
+                             boolean withAudio,
+                             boolean directAudio,
+                             FirstFrameListener listener) throws IOException {
         renderThread = new HandlerThread(TAG + "RenderThread");
         renderThread.start();
         renderThreadHandler = new Handler(renderThread.getLooper());
@@ -78,6 +82,9 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
                 MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
 
         audioTrackIndex = withAudio ? -1 : 0;
+        if (directAudio && withAudio) {
+            startDirectAudio();
+        }
     }
 
     private void initVideoEncoder() {
@@ -136,13 +143,18 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
     /**
      * Release all resources. All already posted frames will be rendered first.
      */
-    void release() {
+    public void release() {
         isRunning = false;
+        isRecording = false;
         if (audioThreadHandler != null)
             audioThreadHandler.post(() -> {
                 if (audioEncoder != null) {
                     audioEncoder.stop();
                     audioEncoder.release();
+                }
+                if (audioRecord != null) {
+                    audioRecord.stop();
+                    audioRecord.release();
                 }
                 audioThread.quit();
             });
@@ -271,6 +283,61 @@ class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
             }
         }
     }
+
+
+    private boolean isRecording = false;
+    private AudioRecord audioRecord;
+    private static final int AUDIO_SOURCE = MediaRecorder.AudioSource.DEFAULT;
+    private static final int SAMPLE_RATE = 48000;
+    private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
+
+
+    void startDirectAudio() {
+        if (isRecording) return;
+        AudioRecord audioRecord = new AudioRecord(
+                AUDIO_SOURCE,
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AUDIO_FORMAT,
+                96000);
+        audioRecord.startRecording();
+        this.audioRecord = audioRecord;
+        isRecording = true;
+        // 1. Create audioEncoder
+        if (audioEncoder == null) {
+            try {
+                audioEncoder = MediaCodec.createEncoderByType("audio/mp4a-latm");
+                MediaFormat format = new MediaFormat();
+                format.setString(MediaFormat.KEY_MIME, "audio/mp4a-latm");
+                format.setInteger(MediaFormat.KEY_CHANNEL_COUNT, audioRecord.getChannelCount());
+                format.setInteger(MediaFormat.KEY_SAMPLE_RATE, audioRecord.getSampleRate());
+                format.setInteger(MediaFormat.KEY_BIT_RATE, 64 * 1024);
+                format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
+                audioEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                audioEncoder.start();
+                audioInputBuffers = audioEncoder.getInputBuffers();
+                audioOutputBuffers = audioEncoder.getOutputBuffers();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return;
+            }
+        }
+        audioThreadHandler.post(() -> {
+            while (isRecording) {
+                int inputBufferId = audioEncoder.dequeueInputBuffer(0);
+                if (inputBufferId >= 0) {
+                    ByteBuffer buffer = audioInputBuffers[inputBufferId];
+                    buffer.clear();
+                    final int length = buffer.remaining();
+                    audioRecord.read(buffer, buffer.remaining());
+                    audioEncoder.queueInputBuffer(inputBufferId, 0, length, presTime, 0);
+                    presTime += length * 125L / 12; // 1000000 microseconds / 48000hz / 2 bytes
+                    drainAudio();
+                }
+            }
+        });
+    }
+
 
     @Override
     public void onWebRtcAudioRecordSamplesReady(JavaAudioDeviceModule.AudioSamples audioSamples) {

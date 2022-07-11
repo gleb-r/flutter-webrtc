@@ -18,7 +18,6 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.cloudwebrtc.webrtc.detection.DetectionRequest;
-import com.cloudwebrtc.webrtc.detection.DetectionResult;
 import com.cloudwebrtc.webrtc.detection.MotionDetection;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
 import com.cloudwebrtc.webrtc.record.FrameCapturer;
@@ -29,7 +28,7 @@ import com.cloudwebrtc.webrtc.utils.ConstraintsMap;
 import com.cloudwebrtc.webrtc.utils.EglUtils;
 import com.cloudwebrtc.webrtc.utils.ObjectType;
 import com.cloudwebrtc.webrtc.utils.PermissionUtils;
-import com.cloudwebrtc.webrtc.videoRecorder.VideoRecorder;
+import com.cloudwebrtc.webrtc.videoRecorder.VideoRecorderFactory;
 
 import org.webrtc.AudioTrack;
 import org.webrtc.CryptoOptions;
@@ -124,7 +123,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private MotionDetection motionDetection;
 
-  private VideoRecorder videoRecorder;
+  private VideoRecorderFactory videoRecorderFactory;
 
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
                         @NonNull AudioManager audioManager) {
@@ -166,6 +165,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     audioDeviceModule = JavaAudioDeviceModule.builder(context)
             .setUseHardwareAcousticEchoCanceler(true)
             .setUseHardwareNoiseSuppressor(true)
+            .setUseStereoInput(false)
             .setSamplesReadyCallback(getUserMediaImpl.inputSamplesInterceptor)
             .createAudioDeviceModule();
 
@@ -539,8 +539,13 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         String imagePath = call.argument(  "imagePath");
         Boolean isLocal = call.argument("isLocal");
         Boolean enableAudio = call.argument("enableAudio");
+        Boolean directAudio = call.argument("directAudio");
         Integer detectionIntervalMs = call.argument("interval");
-        if (isLocal == null || videoPath ==  null || imagePath == null || enableAudio == null ) {
+        if (isLocal == null
+                || videoPath ==  null
+                || imagePath == null
+                || enableAudio == null
+                || directAudio == null ) {
           resultError(call.method, "Wrong arguments in method", result);
           return;
         }
@@ -552,25 +557,32 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         if (motionDetection == null) {
           motionDetection = new MotionDetection(messenger);
         }
-        if (videoRecorder == null) {
-          videoRecorder = new VideoRecorder(
+        if (videoRecorderFactory == null) {
+          videoRecorderFactory = new VideoRecorderFactory(
                   messenger,
                   motionDetection,
                   (JavaAudioDeviceModule) audioDeviceModule,
+                  getUserMediaImpl.inputSamplesInterceptor,
                   context);
         }
         AudioChannel audioChannel = null;
         if (enableAudio) {
           audioChannel = isLocal ? AudioChannel.INPUT : AudioChannel.OUTPUT;
         }
-        videoRecorder.startRecording(videoPath, imagePath, videoTrack, audioChannel,result);
+        videoRecorderFactory.startRecording(videoPath,
+                imagePath,
+                videoTrack,
+                audioChannel,
+                enableAudio,
+                directAudio,
+                result);
         break;
       case "stopRecordVideo":
-        if (videoRecorder == null) {
+        if (videoRecorderFactory == null) {
           resultError(call.method, "Video recorder is not created", result);
           return;
         }
-        videoRecorder.stopRecording(result);
+        videoRecorderFactory.stopRecording(result);
         break;
       case "captureFrame":
         String path = call.argument("path");
