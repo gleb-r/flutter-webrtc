@@ -39,8 +39,8 @@ class VideoRecorder(
         VideoFileRenderer(
             videoFile.absolutePath,
             EglUtils.getRootEglBaseContext(),
-            directAudio,
             withAudio,
+            directAudio,
             this
         )
     }

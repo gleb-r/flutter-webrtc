@@ -4,8 +4,6 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.cloudwebrtc.webrtc.detection.MotionDetection
-import com.cloudwebrtc.webrtc.record.AudioChannel
-import com.cloudwebrtc.webrtc.record.AudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.record.OutputAudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult
 import io.flutter.plugin.common.BinaryMessenger
@@ -17,7 +15,6 @@ class VideoRecorderFactory(
     binaryMessenger: BinaryMessenger,
     private val motionDetection: MotionDetection,
     private val audioDeviceModule: JavaAudioDeviceModule,
-    private val inputSamplesInterceptor: AudioSamplesInterceptor,
     private val applicationContext: Context
 ) : EventChannel.StreamHandler {
 
@@ -40,7 +37,7 @@ class VideoRecorderFactory(
         videoPath: String,
         imagePath: String,
         videoTrack: VideoTrack,
-        audioChannel: AudioChannel?,
+//        audioChannel: AudioChannel?,
         withAudio: Boolean,
         isDirect: Boolean,
         flutterResult: AnyThreadResult
@@ -50,20 +47,16 @@ class VideoRecorderFactory(
             flutterResult.success(false)
             return
         }
-        val interceptor = when {
-            isDirect -> null
-            audioChannel == AudioChannel.INPUT -> inputSamplesInterceptor
-            audioChannel == AudioChannel.OUTPUT -> outputInterceptor
-            else -> null
-        }
+        val interceptor = if (withAudio && !isDirect) outputInterceptor else null
+
 
         val videoRecorder = VideoRecorder(
             videoPath = videoPath,
             imagePath = imagePath,
             videoTrack = videoTrack,
             audioInterceptor = interceptor,
-            directAudio = isDirect,
             withAudio = withAudio,
+            directAudio = isDirect,
             motionDetection = motionDetection,
             applicationContext = applicationContext,
             onDetection = { sendDetection(it) }

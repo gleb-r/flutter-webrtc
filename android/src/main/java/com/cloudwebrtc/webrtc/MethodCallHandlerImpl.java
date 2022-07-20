@@ -539,13 +539,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         String imagePath = call.argument(  "imagePath");
         Boolean isLocal = call.argument("isLocal");
         Boolean enableAudio = call.argument("enableAudio");
-        Boolean directAudio = call.argument("directAudio");
         Integer detectionIntervalMs = call.argument("interval");
         if (isLocal == null
                 || videoPath ==  null
                 || imagePath == null
                 || enableAudio == null
-                || directAudio == null ) {
+        ) {
           resultError(call.method, "Wrong arguments in method", result);
           return;
         }
@@ -562,19 +561,13 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                   messenger,
                   motionDetection,
                   (JavaAudioDeviceModule) audioDeviceModule,
-                  getUserMediaImpl.inputSamplesInterceptor,
                   context);
-        }
-        AudioChannel audioChannel = null;
-        if (enableAudio) {
-          audioChannel = isLocal ? AudioChannel.INPUT : AudioChannel.OUTPUT;
         }
         videoRecorderFactory.startRecording(videoPath,
                 imagePath,
                 videoTrack,
-                audioChannel,
                 enableAudio,
-                directAudio,
+                isLocal,
                 result);
         break;
       case "stopRecordVideo":
