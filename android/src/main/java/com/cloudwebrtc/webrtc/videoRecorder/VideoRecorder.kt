@@ -57,6 +57,7 @@ class VideoRecorder(
         motionDetection.removeListener()
         audioInterceptor?.detachCallback(id)
         videoTrack.removeSink(videoFileRenderer)
+        // TODO: try catch
         videoFileRenderer.release()
         val firstFrame = this.firstFrameTime
             ?: throw Exception("First frame not saved")
