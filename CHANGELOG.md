@@ -1,6 +1,17 @@
 # Changelog
 
 --------------------------------------------
+
+[0.9.5] - 2022-08-30
+
+* [Android] fix: Fix crash when using multiple renderers.
+* [Android] fix bug with track dispose cannot close video
+* [Andorid/iOS/macOS/Windows] Fix bug of missing events in data-channel.
+
+[0.9.4] - 2022-08-22
+
+* [Andorid/iOS/macOS/Windows] New audio input/output selection API, ondevicechange event is used to monitor audio device changes.
+
 [0.9.3] - 2022-08-15
 
 * [Windows/macOS] Fix UI freeze when getting thumbnails.
@@ -10,6 +21,11 @@
 * [Android] update libwebrtc to com.github.webrtc-sdk:android:104.5112.01.
 * [iOS/macOS] update WebRTC-SDK to 104.5112.02.
 * [Windows] update libwebrtc.dll to 104.5112.02.
+
+[0.9.1] - 2022-08-01
+
+* [iOS] fix : iOS app could not change camera resolutions cause by wrong datatype in the video Contraints.
+* [Darwin] bump version for .podspec.
 
 [0.9.0] - 2022-07-27
 
@@ -71,7 +87,6 @@
 
 * [Android] Fix simulcast factory not sending back EncoderInfo (#891)
 * [Android] fix: correct misspell in method screenRequestPermissions (#876)
-
 
 [0.8.3] - 2022-03-01
 

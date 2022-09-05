@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
+import android.media.AudioDeviceInfo;
 import android.os.Build;
 import android.util.Log;
 import android.util.LongSparseArray;
@@ -17,6 +18,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import com.cloudwebrtc.webrtc.audio.AudioDeviceKind;
+import com.cloudwebrtc.webrtc.audio.AudioSwitchManager;
 import com.cloudwebrtc.webrtc.detection.DetectionRequest;
 import com.cloudwebrtc.webrtc.detection.MotionDetection;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
@@ -29,6 +32,8 @@ import com.cloudwebrtc.webrtc.utils.EglUtils;
 import com.cloudwebrtc.webrtc.utils.ObjectType;
 import com.cloudwebrtc.webrtc.utils.PermissionUtils;
 import com.cloudwebrtc.webrtc.videoRecorder.VideoRecorderFactory;
+
+import com.twilio.audioswitch.AudioDevice;
 
 import org.webrtc.AudioTrack;
 import org.webrtc.CryptoOptions;
@@ -84,17 +89,6 @@ import io.flutter.view.TextureRegistry;
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry;
 
 public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
-  interface AudioManager {
-
-    void onAudioManagerRequested(boolean requested);
-
-    void setMicrophoneMute(boolean mute);
-
-    void setSpeakerphoneOn(boolean on);
-
-
-  }
-
   static public final String TAG = "FlutterWebRTCPlugin";
 
   private final Map<String, PeerConnectionObserver> mPeerConnectionObservers = new HashMap<>();
@@ -115,22 +109,18 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
    */
   private GetUserMediaImpl getUserMediaImpl;
 
-  private final AudioManager audioManager;
+  private final AudioSwitchManager audioSwitchManager;
 
   private AudioDeviceModule audioDeviceModule;
 
   private Activity activity;
 
-  private MotionDetection motionDetection;
-
-  private VideoRecorderFactory videoRecorderFactory;
-
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
-                        @NonNull AudioManager audioManager) {
+                        @NonNull AudioSwitchManager audioManager) {
     this.context = context;
     this.textures = textureRegistry;
     this.messenger = messenger;
-    this.audioManager = audioManager;
+    this.audioSwitchManager = audioManager;
   }
 
   static private void resultError(String method, String error, Result result) {
@@ -388,7 +378,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       }
       case "trackDispose": {
         String trackId = call.argument("trackId");
-        localTracks.remove(trackId);
+        mediaStreamTrackStop(trackId);
         result.success(null);
         break;
       }
@@ -484,14 +474,29 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         result.success(null);
         break;
       }
+      case "selectAudioOutput": {
+        String deviceId = call.argument("deviceId");
+        audioSwitchManager.selectAudioOutput(AudioDeviceKind.fromTypeName(deviceId));
+        result.success(null);
+        break;
+      }
       case "setMicrophoneMute":
         boolean mute = call.argument("mute");
-        audioManager.setMicrophoneMute(mute);
+        audioSwitchManager.setMicrophoneMute(mute);
         result.success(null);
+        break;
+      case "selectAudioInput":
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
+          String deviceId = call.argument("deviceId");
+          getUserMediaImpl.setPreferredInputDevice(Integer.parseInt(deviceId));
+          result.success(null);
+        } else {
+          result.notImplemented();
+        }
         break;
       case "enableSpeakerphone":
         boolean enable = call.argument("enable");
-        audioManager.setSpeakerphoneOn(enable);
+        audioSwitchManager.enableSpeakerphone(enable);
         result.success(null);
         break;
       case "getDisplayMedia": {
@@ -743,6 +748,16 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       case "getTransceivers": {
         String peerConnectionId = call.argument("peerConnectionId");
         getTransceivers(peerConnectionId, result);
+        break;
+      }
+      case "setPreferredInputDevice": {
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
+          String deviceId = call.argument("deviceId");
+          getUserMediaImpl.setPreferredInputDevice(Integer.parseInt(deviceId));
+          result.success(null);
+        } else {
+          result.notImplemented();
+        }
         break;
       }
       default:
@@ -1041,14 +1056,14 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     if (mPeerConnectionObservers.size() == 0) {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S
               || context.getApplicationInfo().targetSdkVersion < Build.VERSION_CODES.S) {
-        audioManager.onAudioManagerRequested(true);
+        //audioSwitchManager.start();
       } else {
         ArrayList<String> permissions = new ArrayList<>();
         permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
         requestPermissions(
                 permissions,
                 (args) -> {
-                  audioManager.onAudioManagerRequested(true);
+                  //audioSwitchManager.start();
                 },
                 (args) -> {
                 });
@@ -1223,12 +1238,44 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       }
     }
 
-    ConstraintsMap audio = new ConstraintsMap();
-    audio.putString("label", "Audio");
-    audio.putString("deviceId", "audio-1");
-    audio.putString("facing", "");
-    audio.putString("kind", "audioinput");
-    array.pushMap(audio);
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+      ConstraintsMap audio = new ConstraintsMap();
+      audio.putString("label", "Audio");
+      audio.putString("deviceId", "audio-1");
+      audio.putString("facing", "");
+      audio.putString("kind", "audioinput");
+      array.pushMap(audio);
+    } else {
+      android.media.AudioManager audioManager = ((android.media.AudioManager) context
+          .getSystemService(Context.AUDIO_SERVICE));
+      final AudioDeviceInfo[] devices = audioManager.getDevices(android.media.AudioManager.GET_DEVICES_INPUTS);
+      for (int i = 0; i < devices.length; i++) {
+        AudioDeviceInfo device = devices[i];
+        if (device.getType() == AudioDeviceInfo.TYPE_BUILTIN_MIC || device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                device.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET) {
+          int type = (device.getType() & 0xFF);
+          String label = Build.VERSION.SDK_INT < Build.VERSION_CODES.P ? String.valueOf(i) : device.getAddress();
+          ConstraintsMap audio = new ConstraintsMap();
+          audio.putString("label", label);
+          audio.putString("deviceId", String.valueOf(i));
+          audio.putString("groupId", "" + type);
+          audio.putString("facing", "");
+          audio.putString("kind", "audioinput");
+          array.pushMap(audio);
+        }
+      }
+    }
+
+    List<? extends AudioDevice> audioOutputs = audioSwitchManager.availableAudioDevices();
+
+    for (AudioDevice audioOutput : audioOutputs) {
+      ConstraintsMap audioOutputMap = new ConstraintsMap();
+      audioOutputMap.putString("label", audioOutput.getName());
+      audioOutputMap.putString("deviceId", AudioDeviceKind.fromAudioDevice(audioOutput).typeName);
+      audioOutputMap.putString("facing", "");
+      audioOutputMap.putString("kind", "audiooutput");
+      array.pushMap(audioOutputMap);
+    }
 
     ConstraintsMap map = new ConstraintsMap();
     map.putArray("sources", array.toArrayList());
@@ -1615,7 +1662,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       mPeerConnectionObservers.remove(id);
     }
     if (mPeerConnectionObservers.size() == 0) {
-      audioManager.onAudioManagerRequested(false);
+      //audioSwitchManager.stop();
     }
   }
 
@@ -1810,7 +1857,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     PeerConnectionObserver pco = mPeerConnectionObservers.get(peerConnectionId);
     if (pco == null || pco.getPeerConnection() == null) {
       resultError("rtpSenderSetTrack", "peerConnection is null", result);
-    } else {
+    } else {      
       MediaStreamTrack track = null;
       if (trackId.length() > 0) {
         track = localTracks.get(trackId);
