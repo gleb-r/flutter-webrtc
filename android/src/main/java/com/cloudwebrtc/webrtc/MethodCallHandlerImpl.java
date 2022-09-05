@@ -115,6 +115,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private Activity activity;
 
+  private MotionDetection motionDetection;
+
+  private VideoRecorderFactory videoRecorderFactory;
+
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
                         @NonNull AudioSwitchManager audioManager) {
     this.context = context;
