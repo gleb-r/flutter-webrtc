@@ -85,6 +85,9 @@
 
     UIImageOrientation orientation;
     switch (frame.rotation) {
+        case RTCVideoRotation_0:
+            orientation = UIImageOrientationUp;
+            break;;
         case RTCVideoRotation_90:
             orientation = UIImageOrientationRight;
             break;
@@ -93,8 +96,9 @@
             break;
         case RTCVideoRotation_270:
             orientation = UIImageOrientationLeft;
+            break;
         default:
-            orientation = UIImageOrientationUp;
+            [NSException raise:@"wrong orientation" format:@"orientation value: %ld", (long)frame.rotation];
             break;
     }
 
@@ -115,7 +119,7 @@
     NSData *jpgData = UIImageJPEGRepresentation(uiImage, 0.9f);
 
     if ([jpgData writeToFile:_path atomically:NO]) {
-        NSLog(@"File writed successfully to %@", _path);
+//        NSLog(@"File writed successfully to %@", _path);
         _result(nil);
     } else {
         NSLog(@"Failed to write to file");

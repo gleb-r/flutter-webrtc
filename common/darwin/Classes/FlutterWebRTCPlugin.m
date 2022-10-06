@@ -4,10 +4,12 @@
 #import "FlutterRTCDataChannel.h"
 #import "FlutterRTCDesktopCapturer.h"
 #import "FlutterRTCVideoRenderer.h"
+#import "FlutterRTCVideoRecorder.h"
 #import "AudioUtils.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <WebRTC/WebRTC.h>
+#import <flutter_webrtc/flutter_webrtc-Swift.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wprotocol"
@@ -56,7 +58,7 @@
 
     self = [super init];
 
-    FlutterEventChannel *eventChannel = [FlutterEventChannel eventChannelWithName:@"FlutterWebRTC.Event" 
+    FlutterEventChannel *eventChannel = [FlutterEventChannel eventChannelWithName:@"FlutterWebRTC.Event"
                                               binaryMessenger:messenger];
     [eventChannel setStreamHandler:self];
 
@@ -105,6 +107,10 @@
 #endif
     return self;
 }
+
+FlutterRTCVideoRecorder *videoRecorder;
+MotionDetection* motionDetection;
+
 
 #pragma mark - FlutterStreamHandler methods
 
@@ -273,6 +279,45 @@
             } else {
                 result([FlutterError errorWithCode:[@"Track is class of " stringByAppendingString:[[track class] description]] message:nil details:nil]);
             }
+        }
+    } else if ([@"startRecordToFile" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        NSString* path = argsMap[@"path"];
+        NSString* videoTrackId = argsMap[@"videoTrackId"];
+        NSNumber* audioTrack = argsMap[@"audioChannel"];
+        NSString* recorderId = argsMap[@"recorderId"];
+
+        RTCMediaStreamTrack *track = [self trackForId:videoTrackId];
+        if (track != nil && [track isKindOfClass:[RTCVideoTrack class]]) {
+            RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
+            if (videoRecorder == nil) {
+                        videoRecorder = [[ FlutterRTCVideoRecorder alloc] init];
+                    }
+            [videoRecorder startCapture:videoTrack toPath:path result:result];
+        } else {
+            result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
+        }
+    } else if ([@"stopRecordToFile" isEqualToString:call.method]) {
+        if (videoRecorder != nil) {
+            [videoRecorder stopCaputre:result];
+        } else {
+            NSLog(@"Cant stop rec, recorder is not init");
+            result(@NO);
+        }
+    } else if ([@"motionDetection" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        DetectionRequest* request = [DetectionRequest fromArgs:argsMap];
+        RTCVideoTrack* videoTrack = [self getLocalVideoTrack];
+        if (argsMap == nil) {
+            result([FlutterError errorWithCode:@"Wrong arags in motionDetection" message:nil details:nil]);
+        } else if (videoTrack == nil) {
+            result([FlutterError errorWithCode:@"No local VideoTrackin motionDetection" message:nil details:nil]);
+        } else {
+            if (motionDetection == nil) {
+                motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
+            }
+            [motionDetection setDetectionWithVideoTrack:videoTrack request:request];
+            result(nil);
         }
     } else if ([@"setLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
@@ -640,7 +685,7 @@
             audioTrack.isEnabled = !mute.boolValue;
         }
         result(nil);
-    } 
+    }
 #if TARGET_OS_IPHONE
     else if ([@"enableSpeakerphone" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
@@ -648,7 +693,7 @@
         _speakerOn = enable.boolValue;
         [AudioUtils setSpeakerphoneOn:_speakerOn];
         result(nil);
-    } 
+    }
 #endif
     else if ([@"getLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
@@ -1129,6 +1174,18 @@
         }
     }
     return track;
+}
+
+- (RTCVideoTrack*) getLocalVideoTrack {
+    if ([_localTracks count] == 0) {
+        return nil;
+    }
+    for (RTCMediaStreamTrack* track in  [_localTracks allValues]) {
+        if ( [@"video" isEqualToString:[track kind]]) {
+            return (RTCVideoTrack*) track;
+        }
+    }
+    return nil;
 }
 
 

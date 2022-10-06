@@ -20,6 +20,9 @@ import androidx.annotation.RequiresApi;
 
 import com.cloudwebrtc.webrtc.audio.AudioDeviceKind;
 import com.cloudwebrtc.webrtc.audio.AudioSwitchManager;
+import com.cloudwebrtc.webrtc.detection.DetectionRequest;
+import com.cloudwebrtc.webrtc.detection.DetectionResult;
+import com.cloudwebrtc.webrtc.detection.MotionDetection;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
 import com.cloudwebrtc.webrtc.record.FrameCapturer;
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult;
@@ -111,12 +114,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private Activity activity;
 
+  private MotionDetection motionDetection;
+
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
                         @NonNull AudioSwitchManager audioManager) {
     this.context = context;
     this.textures = textureRegistry;
     this.messenger = messenger;
     this.audioSwitchManager = audioManager;
+    this.motionDetection = new MotionDetection(messenger);
   }
 
   static private void resultError(String method, String error, Result result) {
@@ -127,6 +133,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   void dispose() {
     mPeerConnectionObservers.clear();
+    if (motionDetection != null) {
+      motionDetection.dispose();
+      motionDetection = null;
+    }
   }
 
   private void ensureInitialized() {
@@ -364,7 +374,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       }
       case "trackDispose": {
         String trackId = call.argument("trackId");
-        trackDispose(trackId);
+        localTracks.remove(trackId);
         result.success(null);
         break;
       }
@@ -539,6 +549,22 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           resultError("captureFrame", "Track is null", result);
         }
         break;
+      case "motionDetection" :  {
+          if (motionDetection == null) {
+              motionDetection = new MotionDetection(messenger);
+          }
+          VideoTrack track = getLocalVideoTrack();
+          DetectionRequest request = DetectionRequest.Companion.fromMethodCall(call);
+          if (track == null) {
+            resultError(call.method, "Local video track is null", result);
+          } else if (request == null) {
+            resultError(call.method, "Wrong method args", result);
+          } else {
+            motionDetection.requestMotionDetection(request, track);
+            result.success(null);
+          }
+          break;
+      }
       case "getLocalDescription": {
         String peerConnectionId = call.argument("peerConnectionId");
         PeerConnection peerConnection = getPeerConnection(peerConnectionId);
@@ -1087,6 +1113,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     }
 
     return track;
+  }
+
+  private VideoTrack getLocalVideoTrack() {
+    for (MediaStreamTrack track: localTracks.values()) {
+      if (track.kind().equals("video")) {
+        return (VideoTrack)track;
+      }
+    }
+    return  null;
   }
 
 
@@ -1772,7 +1807,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     PeerConnectionObserver pco = mPeerConnectionObservers.get(peerConnectionId);
     if (pco == null || pco.getPeerConnection() == null) {
       resultError("rtpSenderSetTrack", "peerConnection is null", result);
-    } else {      
+    } else {
       MediaStreamTrack track = null;
       if (trackId.length() > 0) {
         track = localTracks.get(trackId);
