@@ -1,6 +1,19 @@
 # Changelog
 
 --------------------------------------------
+[0.9.8] - 2022-09-30
+
+* [Android] fix: Make sure local stream/track dispose correctly.
+* [Android] Remove bluetooth permission on peerConnectionInit.
+* [iOS] Fix system sound interruption on iOS (#1099).
+* [Android] Fix: call mode on app start (#1097).
+* [Dart] Avoid renderer initialization multiple times (#1067).
+
+[0.9.7] - 2022-09-13
+
+* [Windows] Support sendDtmf.
+* [Windows] Fixed getStats.
+
 [0.9.6] - 2022-09-06
 
 * [Dart] The dc created by didOpenDataChannel needs to set state to open.
