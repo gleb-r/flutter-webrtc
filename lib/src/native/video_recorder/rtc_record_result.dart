@@ -80,9 +80,9 @@ class RTCDetectedFrames {
   int durationMs;
 
   void addFrame(DetectionWithTime frame) {
-    if (aspect != frame.aspect ||
-        xSqCount != xSqCount ||
-        ySqCount != ySqCount) {
+    if (
+        // aspect != frame.aspect ||
+        xSqCount != xSqCount || ySqCount != ySqCount) {
       throw Exception(
           'Detection frame size changed, current: $aspect, new:${frame.aspect}');
     }
