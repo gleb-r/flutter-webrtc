@@ -32,6 +32,7 @@ import com.cloudwebrtc.webrtc.utils.ConstraintsMap;
 import com.cloudwebrtc.webrtc.utils.EglUtils;
 import com.cloudwebrtc.webrtc.utils.ObjectType;
 import com.cloudwebrtc.webrtc.utils.PermissionUtils;
+import com.cloudwebrtc.webrtc.videoRecorder.VideoRecorderFactory;
 
 import com.twilio.audioswitch.AudioDevice;
 
@@ -551,6 +552,49 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         Integer recorderId = call.argument("recorderId");
         getUserMediaImpl.stopRecording(recorderId);
         result.success(null);
+        break;
+      case "startRecordVideo":
+        String videoPath = call.argument(  "videoPath");
+        String imagePath = call.argument(  "imagePath");
+        Boolean isLocal = call.argument("isLocal");
+        Boolean enableAudio = call.argument("enableAudio");
+        Integer detectionIntervalMs = call.argument("interval");
+        if (isLocal == null
+                || videoPath ==  null
+                || imagePath == null
+                || enableAudio == null
+        ) {
+          resultError(call.method, "Wrong arguments in method", result);
+          return;
+        }
+        VideoTrack videoTrack = isLocal ? getLocalVideoTrack() : getRemoteVideoTrack();
+        if (videoTrack == null) {
+          resultError(call.method, "Cant find video track", result);
+          return;
+        }
+        if (motionDetection == null) {
+          motionDetection = new MotionDetection(messenger);
+        }
+        if (videoRecorderFactory == null) {
+          videoRecorderFactory = new VideoRecorderFactory(
+                  messenger,
+                  motionDetection,
+                  (JavaAudioDeviceModule) audioDeviceModule,
+                  context);
+        }
+        videoRecorderFactory.startRecording(videoPath,
+                imagePath,
+                videoTrack,
+                enableAudio,
+                isLocal,
+                result);
+        break;
+      case "stopRecordVideo":
+        if (videoRecorderFactory == null) {
+          resultError(call.method, "Video recorder is not created", result);
+          return;
+        }
+        videoRecorderFactory.stopRecording(result);
         break;
       case "captureFrame":
         String path = call.argument("path");
@@ -1139,6 +1183,24 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       }
     }
     return  null;
+  }
+
+  private  VideoTrack getRemoteVideoTrack() {
+    for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {
+      PeerConnectionObserver pco = entry.getValue();
+        for(MediaStreamTrack track: pco.remoteTracks.values()) {
+          if (track instanceof VideoTrack) {
+            return (VideoTrack) track;
+          }
+        }
+        for(RtpTransceiver transceiver: pco.transceivers.values()) {
+          MediaStreamTrack track = transceiver.getReceiver().track();
+          if (track instanceof VideoTrack) {
+            return (VideoTrack) track;
+          }
+        }
+      }
+    return null;
   }
 
 
