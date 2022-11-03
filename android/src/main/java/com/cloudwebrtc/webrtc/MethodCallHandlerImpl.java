@@ -63,6 +63,7 @@ import org.webrtc.PeerConnectionFactory;
 import org.webrtc.PeerConnectionFactory.InitializationOptions;
 import org.webrtc.PeerConnectionFactory.Options;
 import org.webrtc.RtpSender;
+import org.webrtc.RtpTransceiver;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.SessionDescription.Type;
@@ -117,13 +118,14 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private MotionDetection motionDetection;
 
+  private VideoRecorderFactory videoRecorderFactory;
+
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
                         @NonNull AudioSwitchManager audioManager) {
     this.context = context;
     this.textures = textureRegistry;
     this.messenger = messenger;
     this.audioSwitchManager = audioManager;
-    this.motionDetection = new MotionDetection(messenger);
   }
 
   static private void resultError(String method, String error, Result result) {
