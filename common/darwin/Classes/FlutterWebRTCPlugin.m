@@ -472,7 +472,7 @@ MotionDetection* motionDetection;
         BOOL shouldCallResult = YES;
         if (stream) {
             for (RTCVideoTrack *track in stream.videoTracks) {
-                [self.localTracks removeObjectForKey:track.trackId];
+                [_localTracks removeObjectForKey:track.trackId];
                 RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
                 CapturerStopHandler stopHandler = self.videoCapturerStopHandlers[videoTrack.trackId];
                 if(stopHandler) {
@@ -485,7 +485,7 @@ MotionDetection* motionDetection;
                 }
             }
             for (RTCAudioTrack *track in stream.audioTracks) {
-                [self.localTracks removeObjectForKey:track.trackId];
+                [_localTracks removeObjectForKey:track.trackId];
             }
             [self.localStreams removeObjectForKey:streamId];
             [self deactiveRtcAudioSession];
@@ -551,11 +551,13 @@ MotionDetection* motionDetection;
     } else if ([@"trackDispose" isEqualToString:call.method]){
         NSDictionary* argsMap = call.arguments;
         NSString* trackId = argsMap[@"trackId"];
+        BOOL audioTrack = NO;
         for(NSString *streamId in self.localStreams) {
             RTCMediaStream *stream = [self.localStreams objectForKey:streamId];
             for (RTCAudioTrack *track in stream.audioTracks) {
                 if([trackId isEqualToString:track.trackId]) {
                     [stream removeAudioTrack:track];
+                    audioTrack = YES;
                 }
             }
             for (RTCVideoTrack *track in stream.videoTracks) {
@@ -571,7 +573,10 @@ MotionDetection* motionDetection;
                 }
             }
         }
-        [self.localTracks removeObjectForKey:trackId];
+        [_localTracks removeObjectForKey:trackId];
+        if(audioTrack) {
+          [self ensureAudioSession];
+        }
         result(nil);
     } else if ([@"restartIce" isEqualToString:call.method]){
         NSDictionary* argsMap = call.arguments;
@@ -1176,7 +1181,7 @@ MotionDetection* motionDetection;
 
         for (RTCMediaStreamTrack *track in stream.videoTracks) {
             NSString *trackId = track.trackId;
-            [self.localTracks setObject:track forKey:trackId];
+            [_localTracks setObject:track forKey:trackId];
             [videoTracks addObject:@{
                                      @"enabled": @(track.isEnabled),
                                      @"id": trackId,
