@@ -7,13 +7,13 @@ environment:
   flutter: '>=1.22.0'
 
 dependencies:
-  dart_webrtc: 1.0.10
+  dart_webrtc: 1.0.11
   flutter:
     sdk: flutter
   path_provider: ^2.0.2
-  webrtc_interface: ^1.0.9
   equatable: ^2.0.3
   rxdart: ^0.27.3
+  webrtc_interface: 1.0.10
 
 dev_dependencies:
   flutter_test:
