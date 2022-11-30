@@ -140,9 +140,9 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     }
     
     public func renderFrame(_ frame: RTCVideoFrame?) {
-        if !imageSaved, let imagePath = self.imagePath,
+    if !imageSaved, let imagePath = self.imagePath,
            let frame = frame {
-            imageSaved = frame.saveInFile(filePath: imagePath)
+            imageSaved =  FlutterRTCFrameCapturer.save(frame, toPath: imagePath)
             self.rotation = frame.rotation
         }
         guard started, let frame = frame,
@@ -244,27 +244,6 @@ extension VideoRecorder: FlutterStreamHandler {
     public func onCancel(withArguments arguments: Any?) -> FlutterError? {
         eventSink = nil
         return nil
-    }
-}
-
-extension RTCVideoFrame {
-    func saveInFile(filePath: String) -> Bool {
-        let imageUrl = URL.init(fileURLWithPath: filePath)
-        let uiImage: UIImage = FlutterRTCFrameCapturer.convertFrame(toUIImage: self)
-        let jpgData = uiImage.jpegData(compressionQuality: 0.9)
-        guard let jpgData = jpgData else {
-            NSLog("Can't save image")
-            // TODO: stop recording and return error
-            return false
-        }
-        do {
-            try jpgData.write(to: imageUrl)
-        } catch {
-            // TODO: stop recording and return error
-            NSLog("Image write error: %@", error.localizedDescription)
-            return false
-        }
-        return true
     }
 }
 

@@ -8,5 +8,7 @@
 @interface FlutterRTCFrameCapturer : NSObject<RTCVideoRenderer>
 
 - (instancetype)initWithTrack:(RTCVideoTrack *) track toPath:(NSString *) path result:(FlutterResult)result;
++ (bool) saveFrame:(RTCVideoFrame *)frame
+            toPath:(NSString *) imagePath;
 
 @end
