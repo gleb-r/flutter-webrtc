@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:webrtc_interface/webrtc_interface.dart';
 
+import 'media_stream_track_impl.dart';
 import 'utils.dart';
 
 class MediaRecorderNative extends MediaRecorder {
@@ -30,6 +31,9 @@ class MediaRecorderNative extends MediaRecorder {
       'videoWidth': videoWidth,
       'videoHeight': videoHeight,
       'recorderId': _recorderId
+      'peerConnectionId': videoTrack is MediaStreamTrackNative
+          ? videoTrack.peerConnectionId
+          : null
     });
   }
 

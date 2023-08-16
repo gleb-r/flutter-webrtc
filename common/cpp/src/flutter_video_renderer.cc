@@ -34,8 +34,8 @@ const FlutterDesktopPixelBuffer* FlutterVideoRenderer::CopyPixelBuffer(
     }
 
     frame_->ConvertToARGB(RTCVideoFrame::Type::kABGR, rgb_buffer_.get(), 0,
-                          (int)pixel_buffer_->width,
-                          (int)pixel_buffer_->height);
+                          static_cast<int>(pixel_buffer_->width),
+                          static_cast<int>(pixel_buffer_->height));
 
     pixel_buffer_->buffer = rgb_buffer_.get();
     mutex_.unlock();
@@ -125,9 +125,9 @@ void FlutterVideoRendererManager::CreateVideoRendererTexture(
 
 void FlutterVideoRendererManager::SetMediaStream(int64_t texture_id,
                                                  const std::string& stream_id,
-                                                 const std::string& peerConnectionId) {
+                                                 const std::string& ownerTag) {
   scoped_refptr<RTCMediaStream> stream =
-      base_->MediaStreamForId(stream_id, peerConnectionId);
+      base_->MediaStreamForId(stream_id, ownerTag);
 
   auto it = renderers_.find(texture_id);
   if (it != renderers_.end()) {

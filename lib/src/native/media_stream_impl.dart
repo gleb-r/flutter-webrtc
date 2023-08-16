@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
+import 'factory_impl.dart';
 import 'media_stream_track_impl.dart';
 
 class MediaStreamNative extends MediaStream {
@@ -20,14 +21,14 @@ class MediaStreamNative extends MediaStream {
     _audioTracks.clear();
 
     for (var track in audioTracks) {
-      _audioTracks.add(MediaStreamTrackNative(
-          track['id'], track['label'], track['kind'], track['enabled']));
+      _audioTracks.add(MediaStreamTrackNative(track['id'], track['label'],
+          track['kind'], track['enabled'], ownerTag, track['settings'] ?? {}));
     }
 
     _videoTracks.clear();
     for (var track in videoTracks) {
-      _videoTracks.add(MediaStreamTrackNative(
-          track['id'], track['label'], track['kind'], track['enabled']));
+      _videoTracks.add(MediaStreamTrackNative(track['id'], track['label'],
+          track['kind'], track['enabled'], ownerTag, track['settings'] ?? {}));
     }
   }
 

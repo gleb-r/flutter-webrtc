@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter_webrtc/src/native/event_channel.dart';
-
 import '../desktop_capturer.dart';
+import 'event_channel.dart';
 import 'utils.dart';
 
 class DesktopCapturerSourceNative extends DesktopCapturerSource {
@@ -146,6 +145,7 @@ class DesktopCapturerNative extends DesktopCapturer {
   @override
   Future<List<DesktopCapturerSource>> getSources(
       {required List<SourceType> types, ThumbnailSize? thumbnailSize}) async {
+    _sources.clear();
     final response = await WebRTC.invokeMethod(
       'getDesktopSources',
       <String, dynamic>{

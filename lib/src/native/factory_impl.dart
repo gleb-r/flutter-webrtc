@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter_webrtc/src/native/mediadevices_impl.dart';
 import 'package:webrtc_interface/webrtc_interface.dart';
 
 import '../desktop_capturer.dart';
 import 'desktop_capturer_impl.dart';
+import 'frame_cryptor_impl.dart';
 import 'media_recorder_impl.dart';
 import 'media_stream_impl.dart';
+import 'mediadevices_impl.dart';
 import 'navigator_impl.dart';
 import 'rtc_peerconnection_impl.dart';
 import 'rtc_video_renderer_impl.dart';
@@ -61,6 +62,32 @@ class RTCFactoryNative extends RTCFactory {
 
   @override
   Navigator get navigator => NavigatorNative.instance;
+
+  @override
+  FrameCryptorFactory get frameCryptorFactory =>
+      FrameCryptorFactoryImpl.instance;
+
+  @override
+  Future<RTCRtpCapabilities> getRtpReceiverCapabilities(String kind) async {
+    final response = await WebRTC.invokeMethod(
+      'getRtpReceiverCapabilities',
+      <String, dynamic>{
+        'kind': kind,
+      },
+    );
+    return RTCRtpCapabilities.fromMap(response);
+  }
+
+  @override
+  Future<RTCRtpCapabilities> getRtpSenderCapabilities(String kind) async {
+    final response = await WebRTC.invokeMethod(
+      'getRtpSenderCapabilities',
+      <String, dynamic>{
+        'kind': kind,
+      },
+    );
+    return RTCRtpCapabilities.fromMap(response);
+  }
 }
 
 Future<RTCPeerConnection> createPeerConnection(
@@ -74,6 +101,14 @@ Future<MediaStream> createLocalMediaStream(String label) async {
   return RTCFactoryNative.instance.createLocalMediaStream(label);
 }
 
+Future<RTCRtpCapabilities> getRtpReceiverCapabilities(String kind) async {
+  return RTCFactoryNative.instance.getRtpReceiverCapabilities(kind);
+}
+
+Future<RTCRtpCapabilities> getRtpSenderCapabilities(String kind) async {
+  return RTCFactoryNative.instance.getRtpSenderCapabilities(kind);
+}
+
 MediaRecorder mediaRecorder() {
   return RTCFactoryNative.instance.mediaRecorder();
 }
@@ -83,3 +118,5 @@ Navigator get navigator => RTCFactoryNative.instance.navigator;
 DesktopCapturer get desktopCapturer => DesktopCapturerNative.instance;
 
 MediaDevices get mediaDevices => MediaDeviceNative.instance;
+
+FrameCryptorFactory get frameCryptorFactory => FrameCryptorFactoryImpl.instance;
