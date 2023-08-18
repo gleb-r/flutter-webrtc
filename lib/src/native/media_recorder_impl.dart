@@ -30,7 +30,7 @@ class MediaRecorderNative extends MediaRecorder {
       if (videoTrack != null) 'videoTrackId': videoTrack.id,
       'videoWidth': videoWidth,
       'videoHeight': videoHeight,
-      'recorderId': _recorderId
+      'recorderId': _recorderId,
       'peerConnectionId': videoTrack is MediaStreamTrackNative
           ? videoTrack.peerConnectionId
           : null

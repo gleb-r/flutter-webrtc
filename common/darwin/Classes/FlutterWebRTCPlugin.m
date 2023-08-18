@@ -394,15 +394,15 @@ MotionDetection* motionDetection;
       RTCVideoTrack* videoTrack = (RTCVideoTrack*)track;
       [self mediaStreamTrackCaptureFrame:videoTrack toPath:path result:result];
     } else {
-      if (track == nil) {
-        result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
-      } else {
-        result([FlutterError errorWithCode:[@"Track is class of "
+        if (track == nil) {
+            result([FlutterError errorWithCode:@"Track is nil" message:nil details:nil]);
+        } else {
+            result([FlutterError errorWithCode:[@"Track is class of "
                                                stringByAppendingString:[[track class] description]]
                                    message:nil
                                    details:nil]);
-      }
-    }
+                }
+        }
     } else if ([@"startRecordVideo" isEqualToString:call.method]) {
         NSDictionary *arguments = call.arguments;
         NSString *videoPath = arguments[@"videoPath"];
@@ -1509,11 +1509,6 @@ MotionDetection* motionDetection;
   return track;
 }
 
-- (RTCIceServer*)RTCIceServer:(id)json {
-  if (!json) {
-    NSLog(@"a valid iceServer value");
-    return nil;
-  }
 - (RTCVideoTrack*) getLocalVideoTrack {
     if ([_localTracks count] == 0) {
         return nil;
@@ -1542,9 +1537,6 @@ MotionDetection* motionDetection;
     }
     return nil;
 }
-
-
-
 
 - (RTCIceServer *)RTCIceServer:(id)json
 {

@@ -33,6 +33,79 @@
 - (void)setSize:(CGSize)size {
 }
 
++ (bool) saveFrame:(RTCVideoFrame *)frame
+            toPath:(NSString *) imagePath
+{
+
+  id <RTCVideoFrameBuffer> buffer = frame.buffer;
+  CVPixelBufferRef pixelBufferRef;
+  bool shouldRelease;
+  if (![buffer isKindOfClass:[RTCCVPixelBuffer class]]) {
+    pixelBufferRef = [self convertToCVPixelBuffer:frame];
+    shouldRelease = true;
+  } else {
+    pixelBufferRef = ((RTCCVPixelBuffer *) buffer).pixelBuffer;
+    shouldRelease = false;
+  }
+  CIImage *ciImage = [CIImage imageWithCVPixelBuffer:pixelBufferRef];
+  CGRect outputSize;
+  if (@available(iOS 11, macOS 10.13, *)) {
+    switch (frame.rotation) {
+      case RTCVideoRotation_90:
+        ciImage = [ciImage imageByApplyingCGOrientation:kCGImagePropertyOrientationRight];
+            outputSize = CGRectMake(0, 0, frame.height, frame.width);
+            break;
+      case RTCVideoRotation_180:
+        ciImage = [ciImage imageByApplyingCGOrientation:kCGImagePropertyOrientationDown];
+            outputSize = CGRectMake(0, 0, frame.width, frame.height);
+            break;
+      case RTCVideoRotation_270:
+        ciImage = [ciImage imageByApplyingCGOrientation:kCGImagePropertyOrientationLeft];
+            outputSize = CGRectMake(0, 0, frame.height, frame.width);
+            break;
+      default:
+        outputSize = CGRectMake(0, 0, frame.width, frame.height);
+            break;
+    }
+  } else {
+    outputSize = CGRectMake(0, 0, frame.width, frame.height);
+  }
+  CIContext *tempContext = [CIContext contextWithOptions:nil];
+  CGImageRef cgImage = [tempContext
+          createCGImage:ciImage
+               fromRect:outputSize];
+  NSData *imageData;
+#if TARGET_OS_IPHONE
+  UIImage *uiImage = [UIImage imageWithCGImage:cgImage];
+    if ([[imagePath pathExtension] isEqualToString:@"jpg"]) {
+        imageData = UIImageJPEGRepresentation(uiImage, 1.0f);
+    } else {
+        imageData = UIImagePNGRepresentation(uiImage);
+    }
+#else
+  NSBitmapImageRep *newRep = [[NSBitmapImageRep alloc] initWithCGImage:cgImage];
+  [newRep setSize:NSSizeToCGSize(outputSize.size)];
+  NSDictionary<NSBitmapImageRepPropertyKey, id>* quality = @{
+          NSImageCompressionFactor: @1.0f
+  };
+  if ([[imagePath pathExtension] isEqualToString:@"jpg"]) {
+    imageData = [newRep representationUsingType:NSJPEGFileType properties:quality];
+  } else {
+    imageData = [newRep representationUsingType:NSPNGFileType properties:quality];
+  }
+#endif
+  CGImageRelease(cgImage);
+  if (shouldRelease)
+    CVPixelBufferRelease(pixelBufferRef);
+  if (imageData && [imageData writeToFile:imagePath atomically:NO]) {
+    NSLog(@"File writed successfully to %@", imagePath);
+    return true;
+  } else {
+    NSLog(@"Failed to write to file");
+    return false;
+  }
+}
+
 - (void)renderFrame:(nullable RTCVideoFrame*)frame {
   if (_gotFrame || frame == nil)
     return;
@@ -41,7 +114,7 @@
   CVPixelBufferRef pixelBufferRef;
   bool shouldRelease;
   if (![buffer isKindOfClass:[RTCCVPixelBuffer class]]) {
-    pixelBufferRef = [self convertToCVPixelBuffer:frame];
+    pixelBufferRef = [FlutterRTCFrameCapturer convertToCVPixelBuffer:frame];
     shouldRelease = true;
   } else {
     pixelBufferRef = ((RTCCVPixelBuffer*)buffer).pixelBuffer;
@@ -108,7 +181,7 @@
   });
 }
 
-- (CVPixelBufferRef)convertToCVPixelBuffer:(RTCVideoFrame*)frame {
++ (CVPixelBufferRef)convertToCVPixelBuffer:(RTCVideoFrame*)frame {
   id<RTCI420Buffer> i420Buffer = [frame.buffer toI420];
   CVPixelBufferRef outputPixelBuffer;
   size_t w = (size_t)roundf(i420Buffer.width);

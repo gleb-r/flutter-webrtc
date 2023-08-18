@@ -46,7 +46,7 @@ class VideoRecorder {
   void _listenEventChannel() {
     _detectionSubscription = _eventChannel
         .receiveBroadcastStream()
-        .map(DetectionWithTime.fromMap)
+        .map((event) => DetectionWithTime.fromMap(event))
         .listen((detection) {
       if (_detectionOnVideo == null) {
         _detectionOnVideo = RTCDetectedFrames.init(detection);

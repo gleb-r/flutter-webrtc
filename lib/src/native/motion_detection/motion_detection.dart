@@ -31,7 +31,7 @@ class MotionDetection {
   void _listenEventChannel() {
     _subscription = _eventChannel
         .receiveBroadcastStream()
-        .map(DetectionFrame.fromMap)
+        .map((event) => DetectionFrame.fromMap(event))
         .listen((detection) {
       if (!isPaused) {
         _detectionSubject.add(detection);

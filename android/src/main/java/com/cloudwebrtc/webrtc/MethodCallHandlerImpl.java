@@ -123,14 +123,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   private CustomVideoEncoderFactory videoEncoderFactory;
 
   private CustomVideoDecoderFactory videoDecoderFactory;
-
-  MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry) {
   private MotionDetection motionDetection;
 
   private VideoRecorderFactory videoRecorderFactory;
 
-  MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry,
-                        @NonNull AudioSwitchManager audioManager) {
+  MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry) {
+
     this.context = context;
     this.textures = textureRegistry;
     this.messenger = messenger;
@@ -694,7 +692,6 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         }
         videoRecorderFactory.stopRecording(result);
         break;
-      case "captureFrame":
       case "captureFrame": {
         String path = call.argument("path");
         String videoTrackId = call.argument("trackId");
