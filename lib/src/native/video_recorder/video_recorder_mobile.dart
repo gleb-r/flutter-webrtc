@@ -11,7 +11,6 @@ class VideoRecorder extends IVideoRecorder {
     required String videoPath,
     required String imagePath,
     required MediaStream mediaStream,
-    required String peerId,
     required bool enableAudio,
     // required bool directAudio,
   }) async {
@@ -19,7 +18,6 @@ class VideoRecorder extends IVideoRecorder {
       'videoPath': videoPath,
       'imagePath': imagePath,
       'streamId': mediaStream.id,
-      'peerId': peerId,
       'enableAudio': enableAudio,
       // 'directAudio': directAudio,
     });

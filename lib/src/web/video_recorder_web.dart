@@ -16,7 +16,6 @@ class VideoRecorder extends IVideoRecorder {
     required String videoPath,
     required String imagePath,
     required MediaStream mediaStream,
-    required String peerId,
     required bool enableAudio,
   }) async {
     if (_mediaRecorder != null) {
