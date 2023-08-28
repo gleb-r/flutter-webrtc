@@ -650,24 +650,32 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         result.success(null);
         break;
       case "startRecordVideo":
-        String videoPath = call.argument(  "videoPath");
-        String imagePath = call.argument(  "imagePath");
-        Boolean isLocal = call.argument("isLocal");
-        Boolean enableAudio = call.argument("enableAudio");
-        Integer detectionIntervalMs = call.argument("interval");
-        if (isLocal == null
-                || videoPath ==  null
-                || imagePath == null
-                || enableAudio == null
-        ) {
-          resultError(call.method, "Wrong arguments in method", result);
-          return;
-        }
-        VideoTrack videoTrack = isLocal ? getLocalVideoTrack() : getRemoteVideoTrack();
-        if (videoTrack == null) {
-          resultError(call.method, "Cant find video track", result);
-          return;
-        }
+            String videoPath = call.argument("videoPath");
+            String imagePath = call.argument("imagePath");
+            String mediaStreamId = call.argument("streamId");
+            String peerId = call.argument("peerId");
+            Boolean enableAudio = call.argument("enableAudio");
+            Integer detectionIntervalMs = call.argument("interval");
+            if (peerId == null ||
+                    mediaStreamId == null
+                    || videoPath == null
+                    || imagePath == null
+                    || enableAudio == null
+            ) {
+                resultError(call.method, "Wrong arguments in method", result);
+                return;
+            }
+
+            VideoTrack videoTrack = getLocalVideoTrack(mediaStreamId, peerId);
+            Boolean isLocal = true;
+            if (videoTrack == null) {
+                isLocal = false;
+                videoTrack = getRemoteVideoTrack(mediaStreamId, peerId);
+                if (videoTrack == null) {
+                    resultError(call.method, "Cant find video track", result);
+                    return;
+                }
+            }
         if (motionDetection == null) {
           motionDetection = new MotionDetection(messenger);
         }
@@ -1410,32 +1418,64 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     return track;
   }
 
-  private VideoTrack getLocalVideoTrack() {
-    for (MediaStreamTrack track: localTracks.values()) {
-      if (track.kind().equals("video")) {
-        return (VideoTrack)track;
-      }
+    VideoTrack getRemoteVideoTrack(String mediaStreamId, String peerConnectionId) {
+        MediaStream stream = null;
+        if (peerConnectionId.length() > 0) {
+            PeerConnectionObserver pco = mPeerConnectionObservers.get(peerConnectionId);
+            if (pco != null) {
+                stream = pco.remoteStreams.get(mediaStreamId);
+            }
+        } else {
+            for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers
+                    .entrySet()) {
+                PeerConnectionObserver pco = entry.getValue();
+                stream = pco.remoteStreams.get(mediaStreamId);
+                if (stream != null) {
+                    break;
+                }
+            }
+        }
+        if (stream != null) {
+            return stream.videoTracks.get(0);
+        }
+        return null;
     }
-    return  null;
-  }
 
-  private  VideoTrack getRemoteVideoTrack() {
-    for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {
-      PeerConnectionObserver pco = entry.getValue();
-        for(MediaStreamTrack track: pco.remoteTracks.values()) {
-          if (track instanceof VideoTrack) {
-            return (VideoTrack) track;
-          }
+    VideoTrack getLocalVideoTrack(String mediaStreamId, String peerConnectionId) {
+       MediaStream stream =  localStreams.get(mediaStreamId);
+       if (stream != null) {
+           return stream.videoTracks.get(0);
+       }
+       return null;
+    }
+
+    private VideoTrack getLocalVideoTrack() {
+        for (MediaStreamTrack track : localTracks.values()) {
+            if (track.kind().equals("video")) {
+                return (VideoTrack) track;
+            }
         }
-        for(RtpTransceiver transceiver: pco.transceivers.values()) {
-          MediaStreamTrack track = transceiver.getReceiver().track();
-          if (track instanceof VideoTrack) {
-            return (VideoTrack) track;
-          }
+        return null;
+    }
+
+
+    private VideoTrack getRemoteVideoTrack() {
+        for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {
+            PeerConnectionObserver pco = entry.getValue();
+            for (MediaStreamTrack track : pco.remoteTracks.values()) {
+                if (track instanceof VideoTrack) {
+                    return (VideoTrack) track;
+                }
+            }
+            for (RtpTransceiver transceiver : pco.transceivers.values()) {
+                MediaStreamTrack track = transceiver.getReceiver().track();
+                if (track instanceof VideoTrack) {
+                    return (VideoTrack) track;
+                }
+            }
         }
-      }
-    return null;
-  }
+        return null;
+    }
 
 
   public void getUserMedia(ConstraintsMap constraints, Result result) {

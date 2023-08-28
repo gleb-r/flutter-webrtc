@@ -407,12 +407,18 @@ MotionDetection* motionDetection;
         NSDictionary *arguments = call.arguments;
         NSString *videoPath = arguments[@"videoPath"];
         NSString *imagePath = arguments[@"imagePath"];
-        NSNumber *isLocal = arguments[@"isLocal"];
+        NSString *peerId = arguments[@"peerId"];
+        NSString *streamId = arguments[@"streamId"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
-        bool local = [isLocal boolValue];
-        RTCVideoTrack *videoTrack = local  ? [self getLocalVideoTrack] : [self getRemoteVideoTrack];
+        RTCVideoTrack *videoTrack = [self getLocalTrack:peerId streamId:streamId];
+        bool local = true;
         if (videoTrack == nil) {
-            result([FlutterError errorWithCode:@"Can't find video track" message:nil details:nil]);
+            local = false;
+            videoTrack = [self getRemoteTrack:peerId streamId:streamId];
+
+        }
+        if (videoTrack == nil) {
+          result([FlutterError errorWithCode:@"Can't find video track" message:nil details:nil]);
         } else {
             if (motionDetection == nil) {
                 motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
@@ -1481,6 +1487,41 @@ MotionDetection* motionDetection;
     stream = _localStreams[streamId];
   }
   return stream;
+}
+
+-(RTCVideoTrack*) getLocalTrack:(NSString*) streamId peerConnectionId:(NSString*) peerConnectionId {
+    RTCMediaStream* stream = _localStreams[streamId];
+    if (stream) {
+        for (RTCMediaStreamTrack* track in stream.videoTracks) {
+            if ([track isKindOfClass:[RTCVideoTrack class]]) {
+                return (RTCVideoTrack*)track;
+            }
+        }
+    }
+    return nil;
+}
+
+- (RTCVideoTrack) getRemoteTrack:(NSString*) streamId peerConnectionId:(NSString*) peerConnectionId {
+    RTCMediaStream* stream;
+    if (peerConnectionId.length > 0) {
+        RTCPeerConnection* peerConnection = [_peerConnections objectForKey:peerConnectionId];
+        stream = peerConnection.remoteStreams[streamId];
+    } else {
+        for (RTCPeerConnection* peerConnection in _peerConnections.allValues) {
+            stream = peerConnection.remoteStreams[streamId];
+            if (stream) {
+                break;
+            }
+        }
+    }
+    if (stream) {
+        for (RTCMediaStreamTrack* track in stream.videoTracks) {
+            if ([track isKindOfClass:[RTCVideoTrack class]]) {
+                return (RTCVideoTrack*)track;
+            }
+        }
+    }
+    return nil;
 }
 
 - (RTCMediaStreamTrack*)trackForId:(NSString*)trackId peerConnectionId:(NSString*)peerConnectionId {

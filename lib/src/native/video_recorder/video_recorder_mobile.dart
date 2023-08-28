@@ -1,62 +1,44 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
 
 import '../../../flutter_webrtc.dart';
+import 'i_video_recorder.dart';
 
-class VideoRecorder {
-  RTCDetectedFrames? _detectionOnVideo;
-
-  late final _eventChannel = EventChannel('FlutterWebRTC/detectionOnVideo');
-  StreamSubscription? _detectionSubscription;
-
+class VideoRecorder extends IVideoRecorder {
+  @override
   Future<bool> start({
     required String videoPath,
     required String imagePath,
-    required bool isLocal,
+    required MediaStream mediaStream,
+    required String peerId,
     required bool enableAudio,
     // required bool directAudio,
   }) async {
     final isStarted = await WebRTC.invokeMethod('startRecordVideo', {
       'videoPath': videoPath,
       'imagePath': imagePath,
-      'isLocal': isLocal,
+      'streamId': mediaStream.id,
+      'peerId': peerId,
       'enableAudio': enableAudio,
       // 'directAudio': directAudio,
     });
     if (isStarted) {
-      _listenEventChannel();
+      listenEventChannel();
     }
     return isStarted;
   }
 
+  @override
   Future<RTCRecordResult> stop() async {
+    super.disposeDetection();
     final resultRaw = await WebRTC.invokeMethod('stopRecordVideo');
     // TODO: listen for write complete event
-    await _detectionSubscription?.cancel();
     final result = RecorderResult.fromMap(resultRaw);
-    final detection = _detectionOnVideo;
+    final detection = detectionOnVideo;
     detection?.durationMs = result.durationMs;
     detection?.frameIntervalMs = result.frameInterval;
-    _detectionOnVideo = null;
+    detectionOnVideo = null;
     return RTCRecordResult.from(result, detection);
-  }
-
-  void _listenEventChannel() {
-    _detectionSubscription = _eventChannel
-        .receiveBroadcastStream()
-        .map((event) => DetectionWithTime.fromMap(event))
-        .listen((detection) {
-      if (_detectionOnVideo == null) {
-        _detectionOnVideo = RTCDetectedFrames.init(detection);
-      } else {
-        _detectionOnVideo?.addFrame(detection);
-      }
-    });
-  }
-
-  void dispose() {
-    _detectionSubscription?.cancel();
   }
 }
