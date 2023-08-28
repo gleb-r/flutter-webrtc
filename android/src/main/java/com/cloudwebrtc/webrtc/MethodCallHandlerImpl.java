@@ -653,11 +653,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
             String videoPath = call.argument("videoPath");
             String imagePath = call.argument("imagePath");
             String mediaStreamId = call.argument("streamId");
-            String peerId = call.argument("peerId");
             Boolean enableAudio = call.argument("enableAudio");
             Integer detectionIntervalMs = call.argument("interval");
-            if (peerId == null ||
-                    mediaStreamId == null
+            if ( mediaStreamId == null
                     || videoPath == null
                     || imagePath == null
                     || enableAudio == null
@@ -666,11 +664,11 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                 return;
             }
 
-            VideoTrack videoTrack = getLocalVideoTrack(mediaStreamId, peerId);
+            VideoTrack videoTrack = getLocalVideoTrack(mediaStreamId);
             Boolean isLocal = true;
             if (videoTrack == null) {
                 isLocal = false;
-                videoTrack = getRemoteVideoTrack(mediaStreamId, peerId);
+                videoTrack = getRemoteVideoTrack(mediaStreamId);
                 if (videoTrack == null) {
                     resultError(call.method, "Cant find video track", result);
                     return;
@@ -1418,22 +1416,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     return track;
   }
 
-    VideoTrack getRemoteVideoTrack(String mediaStreamId, String peerConnectionId) {
+    VideoTrack getRemoteVideoTrack(String mediaStreamId) {
         MediaStream stream = null;
-        if (peerConnectionId.length() > 0) {
-            PeerConnectionObserver pco = mPeerConnectionObservers.get(peerConnectionId);
-            if (pco != null) {
-                stream = pco.remoteStreams.get(mediaStreamId);
-            }
-        } else {
-            for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers
+        for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers
                     .entrySet()) {
                 PeerConnectionObserver pco = entry.getValue();
                 stream = pco.remoteStreams.get(mediaStreamId);
                 if (stream != null) {
                     break;
                 }
-            }
         }
         if (stream != null) {
             return stream.videoTracks.get(0);
@@ -1441,7 +1432,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         return null;
     }
 
-    VideoTrack getLocalVideoTrack(String mediaStreamId, String peerConnectionId) {
+    VideoTrack getLocalVideoTrack(String mediaStreamId) {
        MediaStream stream =  localStreams.get(mediaStreamId);
        if (stream != null) {
            return stream.videoTracks.get(0);

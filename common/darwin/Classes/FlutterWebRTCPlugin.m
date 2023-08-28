@@ -1489,7 +1489,7 @@ MotionDetection* motionDetection;
   return stream;
 }
 
--(RTCVideoTrack*) getLocalTrack:(NSString*) streamId peerConnectionId:(NSString*) peerConnectionId {
+-(RTCVideoTrack*) getLocalTrack:(NSString*) streamId  {
     RTCMediaStream* stream = _localStreams[streamId];
     if (stream) {
         for (RTCMediaStreamTrack* track in stream.videoTracks) {
@@ -1501,17 +1501,12 @@ MotionDetection* motionDetection;
     return nil;
 }
 
-- (RTCVideoTrack) getRemoteTrack:(NSString*) streamId peerConnectionId:(NSString*) peerConnectionId {
+- (RTCVideoTrack) getRemoteTrack:(NSString*) streamId  {
     RTCMediaStream* stream;
-    if (peerConnectionId.length > 0) {
-        RTCPeerConnection* peerConnection = [_peerConnections objectForKey:peerConnectionId];
+    for (RTCPeerConnection* peerConnection in _peerConnections.allValues) {
         stream = peerConnection.remoteStreams[streamId];
-    } else {
-        for (RTCPeerConnection* peerConnection in _peerConnections.allValues) {
-            stream = peerConnection.remoteStreams[streamId];
-            if (stream) {
-                break;
-            }
+        if (stream) {
+            break;
         }
     }
     if (stream) {
