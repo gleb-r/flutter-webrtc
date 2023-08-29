@@ -410,11 +410,12 @@ MotionDetection* motionDetection;
         NSString *peerId = arguments[@"peerId"];
         NSString *streamId = arguments[@"streamId"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
-        RTCVideoTrack *videoTrack = [self getLocalTrack:peerId streamId:streamId];
+
         bool local = true;
+        RTCVideoTrack *videoTrack = [self getLocalTrack:streamId];
         if (videoTrack == nil) {
             local = false;
-            videoTrack = [self getRemoteTrack:peerId streamId:streamId];
+            videoTrack = [self getRemoteTrack:streamId];
 
         }
         if (videoTrack == nil) {
@@ -1501,7 +1502,7 @@ MotionDetection* motionDetection;
     return nil;
 }
 
-- (RTCVideoTrack) getRemoteTrack:(NSString*) streamId  {
+- (RTCVideoTrack*) getRemoteTrack:(NSString*) streamId  {
     RTCMediaStream* stream;
     for (RTCPeerConnection* peerConnection in _peerConnections.allValues) {
         stream = peerConnection.remoteStreams[streamId];
