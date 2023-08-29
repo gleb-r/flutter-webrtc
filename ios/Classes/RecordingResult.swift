@@ -9,14 +9,12 @@ import Foundation
 
 struct RecordingResult{
     let videoPath: String
-    let imagePath: String
     let durationMs:Int
     let frameInterval:Int
     let rotationDegree:Int
     
     func toMap() ->[String: Any] {
         return ["video": videoPath,
-                "image": imagePath,
                 "rotation": NSNumber(value: rotationDegree),
                 "duration": NSNumber(value: durationMs),
                 "interval": NSNumber(value: frameInterval)

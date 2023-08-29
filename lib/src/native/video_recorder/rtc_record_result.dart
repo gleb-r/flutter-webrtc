@@ -1,25 +1,20 @@
 import 'dart:collection';
 import 'dart:convert';
-import 'dart:typed_data';
-
 import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
 
 class RTCRecordResult {
-  RTCRecordResult(
-      {required this.videoPath,
-      required this.imagePath,
-      required this.imageBytes,
-      required this.detectedFrames,
-      required this.frameRotation,
-      required this.frameInterval,
-      required this.durationMs});
+  RTCRecordResult({
+    required this.videoPath,
+    required this.detectedFrames,
+    required this.frameRotation,
+    required this.frameInterval,
+    required this.durationMs,
+  });
 
   factory RTCRecordResult.from(
       RecorderResult result, RTCDetectedFrames? frames) {
     return RTCRecordResult(
       videoPath: result.videoPath,
-      imagePath: result.imagePath,
-      imageBytes: null,
       detectedFrames: frames,
       frameRotation: result.frameRotation,
       frameInterval: result.frameInterval,
@@ -27,28 +22,7 @@ class RTCRecordResult {
     );
   }
 
-  factory RTCRecordResult.fromBytes({
-    required String videoPath,
-    required int durationMs,
-    required int frameRotation,
-    required int frameInterval,
-    required RTCDetectedFrames? detectedFrames,
-    required ByteBuffer imageBytes,
-  }) {
-    return RTCRecordResult(
-      videoPath: videoPath,
-      imagePath: null,
-      imageBytes: imageBytes,
-      detectedFrames: detectedFrames,
-      frameRotation: frameRotation,
-      frameInterval: frameInterval,
-      durationMs: durationMs,
-    );
-  }
-
   final String videoPath;
-  final String? imagePath;
-  final ByteBuffer? imageBytes;
   final RTCDetectedFrames? detectedFrames;
   final int durationMs;
   final int frameInterval;
@@ -104,7 +78,7 @@ class RTCDetectedFrames {
 
   void addFrame(DetectionWithTime frame) {
     if (
-        // aspect != frame.aspect ||
+// aspect != frame.aspect ||
         xSqCount != xSqCount || ySqCount != ySqCount) {
       throw Exception(
           'Detection frame size changed, current: $aspect, new:${frame.aspect}');

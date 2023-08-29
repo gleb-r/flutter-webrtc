@@ -29,8 +29,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     private var eventSink :FlutterEventSink?
     private let motionDetection: MotionDetection
     private var videoPath: String?
-    private var imagePath: String?
-    private var imageSaved = false
     private var rotation = RTCVideoRotation._0
     
     private static let TIME_SCALE: Int32 = 600
@@ -50,7 +48,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     
     @objc public func startCapure(videoTrack: RTCVideoTrack,
                                   videoPath: String,
-                                  imagePath: String,
                                   enableAudio: Bool,
                                   result: FlutterResult) {
         guard !started else {
@@ -60,7 +57,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         // TODO: enable audio
         self.started = true
         self.videoTrack = videoTrack
-        self.imageSaved = false
         let videoUrl = URL.init(fileURLWithPath: videoPath)
         do {
             videoWriter = try AVAssetWriter.init(outputURL: videoUrl, fileType: AVFileType.mp4)
@@ -73,14 +69,11 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         videoTrack.add(self)
         motionDetection.addListener(listener: self)
         self.videoPath = videoPath
-        self.imagePath = imagePath
         result(true)
     }
     
     @objc public func stopCapure(result: FlutterResult) {
-        guard started,
-              let videofilePath = videoPath,
-              let imagePath = self.imagePath else {
+        guard started, let videofilePath = videoPath else {
             result(FlutterError(code: "Stop recorder error",
                                 message: "Can't stop, is not started",
                                 details: nil))
@@ -105,20 +98,13 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         if let firstFrameTime = firstFrameTime {
             durationMs = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
         } else { durationMs = 0 }
-        
-        if imageSaved {
-            let recResult = RecordingResult(videoPath: videofilePath,
-                                            imagePath: imagePath,
+        let recResult = RecordingResult(videoPath: videofilePath,
                                             durationMs: durationMs,
                                             frameInterval: motionDetection.frameIntervalMs,
                                             rotationDegree: rotation.rawValue)
             result(recResult.toMap())
             
-        } else {
-            result(FlutterError(code: "Stop recorder error",
-                                message: "Image is not saved",
-                                details: nil))
-        }
+
         started = false
         adapter = nil
         videoTrack = nil
@@ -126,7 +112,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         adapter = nil
         firstFrameTime = nil
         self.videoPath = nil
-        self.imagePath = nil
     }
     
     public func setSize(_ size: CGSize) {
@@ -140,11 +125,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     }
     
     public func renderFrame(_ frame: RTCVideoFrame?) {
-    if !imageSaved, let imagePath = self.imagePath,
-           let frame = frame {
-            imageSaved =  FlutterRTCFrameCapturer.save(frame, toPath: imagePath)
-            self.rotation = frame.rotation
-        }
         guard started, let frame = frame,
               let pixelBuffer = self.pixelBuffer,
               let writer = writerInput,
@@ -157,6 +137,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             currentFrameNumer = Int64((frameTime - firstFrameTime) * Double(Self.TIME_SCALE))
         } else {
             firstFrameTime = frameTime
+            self.rotation = frame.rotation
             currentFrameNumer = 0
         }
         let persentedTime = CMTimeMake(value: currentFrameNumer,
@@ -337,6 +318,3 @@ extension CVPixelBuffer {
         CVPixelBufferUnlockBaseAddress(self, .readOnly)
     }
 }
-
-
-

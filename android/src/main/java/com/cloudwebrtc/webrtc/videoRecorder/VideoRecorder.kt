@@ -18,7 +18,6 @@ import kotlin.random.Random
 
 class VideoRecorder(
     private val videoPath: String,
-    private val imagePath: String,
     private val videoTrack: VideoTrack,
     private val audioInterceptor: AudioSamplesInterceptor?,
     private val directAudio: Boolean,
@@ -28,8 +27,6 @@ class VideoRecorder(
     private val onDetection: (DetectionWithIndex) -> Unit
 
 ) : FirstFrameListener, MotionDetection.Listener {
-    private var imageSaved = false
-    private val imageFile by lazy { File(imagePath) }
     private val videoFile by lazy { File(videoPath) }
     private var firstFrameTime: Long? = null
     private var frameRotation = 0
@@ -47,7 +44,6 @@ class VideoRecorder(
 
     fun start() {
         videoFile.parentFile?.mkdirs()
-        FrameCapturer(videoTrack, imageFile, imageSaveCallback)
         videoTrack.addSink(videoFileRenderer)
         audioInterceptor?.attachCallback(id, videoFileRenderer)
         motionDetection.addListener(this)
@@ -61,9 +57,6 @@ class VideoRecorder(
         videoFileRenderer.release()
         val firstFrame = this.firstFrameTime
             ?: throw Exception("First frame not saved")
-        if (!imageSaved) {
-            throw Exception("Image not saved")
-        }
         val duration = System.currentTimeMillis() - firstFrame
         val values = ContentValues(3)
         values.put(MediaStore.Video.Media.TITLE, videoFile.name)
@@ -75,26 +68,10 @@ class VideoRecorder(
         )
         return RecordingResult(
             videoPath = videoPath,
-            imagePath = imagePath,
             durationMs = duration,
             frameIntervalMs = motionDetection.frameIntervalMs,
             rotationDegree = frameRotation
         )
-    }
-
-
-    private val imageSaveCallback = object : MethodChannel.Result {
-        override fun success(result: Any?) {
-            imageSaved = true
-        }
-
-        override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-            Log.e("VideoRecorder", "$errorCode, $errorMessage")
-            // TODO: error through event chennel
-//            flutterResult.error(errorCode, errorMessage, errorDetails)
-        }
-
-        override fun notImplemented() {}
     }
 
     override fun onFirstFrame(frameRotation: Int) {
@@ -111,5 +88,4 @@ class VideoRecorder(
             onDetection(frame)
         }
     }
-
 }

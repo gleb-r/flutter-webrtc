@@ -35,7 +35,6 @@ class VideoRecorderFactory(
 
     fun startRecording(
         videoPath: String,
-        imagePath: String,
         videoTrack: VideoTrack,
 //        audioChannel: AudioChannel?,
         withAudio: Boolean,
@@ -52,7 +51,6 @@ class VideoRecorderFactory(
 
         val videoRecorder = VideoRecorder(
             videoPath = videoPath,
-            imagePath = imagePath,
             videoTrack = videoTrack,
             audioInterceptor = interceptor,
             withAudio = withAudio,

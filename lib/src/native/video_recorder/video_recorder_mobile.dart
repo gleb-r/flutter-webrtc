@@ -9,14 +9,12 @@ class VideoRecorder extends IVideoRecorder {
   @override
   Future<bool> start({
     required String videoPath,
-    required String imagePath,
     required MediaStream mediaStream,
     required bool enableAudio,
     // required bool directAudio,
   }) async {
     final isStarted = await WebRTC.invokeMethod('startRecordVideo', {
       'videoPath': videoPath,
-      'imagePath': imagePath,
       'streamId': mediaStream.id,
       'enableAudio': enableAudio,
       // 'directAudio': directAudio,
