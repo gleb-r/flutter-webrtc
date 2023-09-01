@@ -6,7 +6,7 @@ import '../../../flutter_webrtc.dart';
 
 abstract class IVideoRecorder {
   Future<bool> start({
-    required String videoPath,
+    required String recordId,
     required MediaStream mediaStream,
     required bool enableAudio,
   });
