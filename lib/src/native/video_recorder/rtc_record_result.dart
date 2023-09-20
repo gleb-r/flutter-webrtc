@@ -4,6 +4,7 @@ import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
 
 class RTCRecordResult {
   RTCRecordResult({
+    required this.recordId,
     required this.videoPath,
     required this.detectedFrames,
     required this.frameRotation,
@@ -14,6 +15,7 @@ class RTCRecordResult {
   factory RTCRecordResult.from(
       RecorderResult result, RTCDetectedFrames? frames) {
     return RTCRecordResult(
+      recordId: result.recordId,
       videoPath: result.videoPath,
       detectedFrames: frames,
       frameRotation: result.frameRotation,
@@ -22,6 +24,7 @@ class RTCRecordResult {
     );
   }
 
+  final String recordId;
   final String videoPath;
   final RTCDetectedFrames? detectedFrames;
   final int durationMs;

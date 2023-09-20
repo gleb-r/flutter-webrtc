@@ -1,6 +1,7 @@
 package com.cloudwebrtc.webrtc.videoRecorder
 
 data class RecordingResult(
+    val recordId: String,
     val videoPath: String,
     val durationMs: Long,
     val frameIntervalMs: Long,
@@ -9,6 +10,7 @@ data class RecordingResult(
 ) {
     fun toMap(): Map<String, Any> {
         return mapOf(
+            "recordId" to recordId,
             "video" to videoPath,
             "rotation" to rotationDegree,
             "duration" to durationMs,

@@ -2,6 +2,7 @@ package com.cloudwebrtc.webrtc.videoRecorder
 
 import android.content.ContentValues
 import android.content.Context
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import com.cloudwebrtc.webrtc.detection.DetectionResult
@@ -12,13 +13,15 @@ import com.cloudwebrtc.webrtc.record.FrameCapturer
 import com.cloudwebrtc.webrtc.record.VideoFileRenderer
 import com.cloudwebrtc.webrtc.utils.EglUtils
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.util.PathUtils.getFilesDir
 import org.webrtc.VideoTrack
 import java.io.File
+import java.util.UUID
 import kotlin.random.Random
 
 class VideoRecorder(
-    private val videoPath: String,
     private val videoTrack: VideoTrack,
+    private val dirPath: String,
     private val audioInterceptor: AudioSamplesInterceptor?,
     private val directAudio: Boolean,
     private val withAudio: Boolean,
@@ -27,7 +30,11 @@ class VideoRecorder(
     private val onDetection: (DetectionWithIndex) -> Unit
 
 ) : FirstFrameListener, MotionDetection.Listener {
-    private val videoFile by lazy { File(videoPath) }
+    private val recordId by lazy {   UUID.randomUUID().toString() }
+
+    private val videoFile: File by lazy {
+        File("$dirPath/$recordId.mp4")
+    }
     private var firstFrameTime: Long? = null
     private var frameRotation = 0
     private val id by lazy { Random(10000).nextInt() }
@@ -44,6 +51,8 @@ class VideoRecorder(
 
     fun start() {
         videoFile.parentFile?.mkdirs()
+        Log.d("TAG", "Start recording, file: ${videoFile.absolutePath}")
+
         videoTrack.addSink(videoFileRenderer)
         audioInterceptor?.attachCallback(id, videoFileRenderer)
         motionDetection.addListener(this)
@@ -67,7 +76,8 @@ class VideoRecorder(
             values
         )
         return RecordingResult(
-            videoPath = videoPath,
+            recordId = recordId,
+            videoPath = videoFile.absolutePath,
             durationMs = duration,
             frameIntervalMs = motionDetection.frameIntervalMs,
             rotationDegree = frameRotation

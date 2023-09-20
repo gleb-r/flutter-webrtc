@@ -34,8 +34,8 @@ class VideoRecorderFactory(
     }
 
     fun startRecording(
-        videoPath: String,
         videoTrack: VideoTrack,
+        dirPath: String,
 //        audioChannel: AudioChannel?,
         withAudio: Boolean,
         isDirect: Boolean,
@@ -50,8 +50,8 @@ class VideoRecorderFactory(
 
 
         val videoRecorder = VideoRecorder(
-            videoPath = videoPath,
             videoTrack = videoTrack,
+            dirPath = dirPath,
             audioInterceptor = interceptor,
             withAudio = withAudio,
             directAudio = isDirect,

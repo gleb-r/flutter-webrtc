@@ -650,12 +650,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         result.success(null);
         break;
       case "startRecordVideo":
-            String videoPath = call.argument("videoPath");
+            String dirPath = call.argument("dirPath");
             String mediaStreamId = call.argument("streamId");
             Boolean enableAudio = call.argument("enableAudio");
             Integer detectionIntervalMs = call.argument("interval");
             if ( mediaStreamId == null
-                    || videoPath == null
+                    || dirPath == null
                     || enableAudio == null
             ) {
                 resultError(call.method, "Wrong arguments in method", result);
@@ -682,8 +682,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                   (JavaAudioDeviceModule) audioDeviceModule,
                   context);
         }
-        videoRecorderFactory.startRecording(videoPath,
+        videoRecorderFactory.startRecording(
                 videoTrack,
+                dirPath,
                 enableAudio,
                 isLocal,
                 result);

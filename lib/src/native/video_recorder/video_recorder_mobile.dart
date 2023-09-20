@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -9,15 +12,13 @@ import 'i_video_recorder.dart';
 class VideoRecorder extends IVideoRecorder {
   @override
   Future<bool> start({
-    required String recordId,
+    required String dirPath,
     required MediaStream mediaStream,
     required bool enableAudio,
     // required bool directAudio,
   }) async {
-    final videoPath = await getTemporaryDirectory()
-        .then((dir) => "${dir.path}/records/$recordId.mp4");
     final isStarted = await WebRTC.invokeMethod('startRecordVideo', {
-      'videoPath': videoPath,
+      'dirPath': dirPath,
       'streamId': mediaStream.id,
       'enableAudio': enableAudio,
       // 'directAudio': directAudio,
@@ -30,7 +31,7 @@ class VideoRecorder extends IVideoRecorder {
 
   @override
   Future<RTCRecordResult> stop() async {
-    super.disposeDetection();
+    disposeDetection();
     final resultRaw = await WebRTC.invokeMethod('stopRecordVideo');
     // TODO: listen for write complete event
     final result = RecorderResult.fromMap(resultRaw);
@@ -39,5 +40,25 @@ class VideoRecorder extends IVideoRecorder {
     detection?.frameIntervalMs = result.frameInterval;
     detectionOnVideo = null;
     return RTCRecordResult.from(result, detection);
+  }
+
+  late final _eventChannel = EventChannel('FlutterWebRTC/detectionOnVideo');
+  StreamSubscription? _detectionSubscription;
+
+  void disposeDetection() {
+    _detectionSubscription?.cancel();
+  }
+
+  void listenEventChannel() {
+    _detectionSubscription = _eventChannel
+        .receiveBroadcastStream()
+        .map((event) => DetectionWithTime.fromMap(event))
+        .listen((detection) {
+      if (detectionOnVideo == null) {
+        detectionOnVideo = RTCDetectedFrames.init(detection);
+      } else {
+        detectionOnVideo?.addFrame(detection);
+      }
+    });
   }
 }

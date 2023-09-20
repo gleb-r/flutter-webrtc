@@ -11,7 +11,7 @@ class VideoRecorder extends IVideoRecorder {
 
   @override
   Future<bool> start({
-    required String recordId,
+    required String dirPath,
     required MediaStream mediaStream,
     required bool enableAudio,
   }) async {
@@ -25,7 +25,6 @@ class VideoRecorder extends IVideoRecorder {
       mimeType: "video/webm",
     );
     _recordStartTime = DateTime.now();
-    listenEventChannel();
     return true;
   }
 
@@ -34,10 +33,11 @@ class VideoRecorder extends IVideoRecorder {
     if (_mediaRecorder == null || _recordStartTime == null) {
       throw Exception('MediaRecorder is not started');
     }
-    disposeDetection();
+    final recordId = DateTime.now().millisecondsSinceEpoch.toString();
     final String videoBlobUrl = await _mediaRecorder?.stop();
     final duration = DateTime.now().difference(_recordStartTime!);
     return RTCRecordResult(
+      recordId: recordId,
       videoPath: videoBlobUrl,
       frameRotation: 0,
       // TODO: get rotation
