@@ -78,6 +78,14 @@ NSArray<RTC_OBJC_TYPE(RTCVideoCodecInfo) *>* motifyH264ProfileLevelId(
 }
 @end
 
+void postEvent(FlutterEventSink sink, id _Nullable event) {
+  if (sink) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      sink(event);
+    });
+  }
+}
+
 @implementation FlutterWebRTCPlugin {
 #pragma clang diagnostic pop
   FlutterMethodChannel* _methodChannel;
@@ -160,7 +168,7 @@ NSArray<RTC_OBJC_TYPE(RTCVideoCodecInfo) *>* motifyH264ProfileLevelId(
   [_peerConnectionFactory.audioDeviceModule setDevicesUpdatedHandler:^(void) {
     NSLog(@"Handle Devices Updated!");
     if (self.eventSink) {
-      self.eventSink(@{@"event" : @"onDeviceChange"});
+      postEvent( self.eventSink, @{@"event" : @"onDeviceChange"});
     }
   }];
 #endif
@@ -216,7 +224,7 @@ MotionDetection* motionDetection;
   if (self.eventSink &&
       (routeChangeReason == AVAudioSessionRouteChangeReasonNewDeviceAvailable ||
        routeChangeReason == AVAudioSessionRouteChangeReasonOldDeviceUnavailable)) {
-    self.eventSink(@{@"event" : @"onDeviceChange"});
+    postEvent(self.eventSink, @{@"event" : @"onDeviceChange"});
   }
 #endif
 }

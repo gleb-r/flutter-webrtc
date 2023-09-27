@@ -1,6 +1,23 @@
 # Changelog
 
 --------------------------------------------
+[0.9.45] - 2023-09-27
+
+* [iOS/macOS] fix: send message on non-platform thread.
+* [Windows] fix: fix setSrcObj with trackId for Windows.
+
+[0.9.44] - 2023-09-25
+
+* [Windows] fix: fix Renderer bug for Windows.
+* [Native] fix: Use independent threads to process frame encryption/decryption
+* [Native] fix: Correct handle SIF frame
+* [Native] fix: Fix a fault tolerance judgment failure
+
+[0.9.43] - 2023-09-20
+
+* [Native] fix: send frame cryptor events from signaling thread.
+* [Native] fix: h264 freeze when using E2EE.
+
 [0.9.42+hotfix.1] - 2023-09-15
 
 * [Windows/Linux] fix: fix cannot start vp8/h264 encoder correctly.
