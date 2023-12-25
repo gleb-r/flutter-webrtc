@@ -448,6 +448,19 @@ MotionDetection* motionDetection;
                                        message:@"Can't stop record, reorder is nil"
                                        details:nil]);
         }
+    } else if ([@"changeVideoResolution" isEqualToString:call.method]) {
+        NSDictionary* argsMap = call.arguments;
+        int width = ((NSNumber*)argsMap[@"width"]).intValue;
+        int height = ((NSNumber*)argsMap[@"height"]).intValue;
+        int fps = ((NSNumber*)argsMap[@"fps"]).intValue;
+        RTCVideoTrack* videoTrack = [self getLocalVideoTrack];
+        if (videoTrack == nil) {
+            result([FlutterError errorWithCode:@"No local VideoTrack" message:nil details:nil]);
+            return;
+        }
+        RTCVideoSource* videoSource = [videoTrack source];
+        [videoSource adaptOutputFormatToWidth:width height:height fps:fps];
+        result(nil);
     } else if ([@"motionDetection" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         DetectionRequest* request = [DetectionRequest fromArgs:argsMap];

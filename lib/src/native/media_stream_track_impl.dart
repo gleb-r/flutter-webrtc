@@ -18,11 +18,14 @@ class MediaStreamTrackNative extends MediaStreamTrack {
     return MediaStreamTrackNative(map['id'], map['label'], map['kind'],
         map['enabled'], peerConnectionId, map['settings'] ?? {});
   }
+
   final String _trackId;
   final String _label;
   final String _kind;
   final String _peerConnectionId;
   final Map<Object?, Object?> settings_;
+
+  Map<String, dynamic>? _mediaConstraints;
 
   bool _enabled;
 
@@ -100,15 +103,33 @@ class MediaStreamTrackNative extends MediaStreamTrack {
   }
 
   @override
-  Future<void> applyConstraints([Map<String, dynamic>? constraints]) {
+  Future<void> applyConstraints([Map<String, dynamic>? constraints]) async {
     if (constraints == null) return Future.value();
 
-    var current = getConstraints();
+    final current = _mediaConstraints;
     if (constraints.containsKey('volume') &&
-        current['volume'] != constraints['volume']) {
+        current?['volume'] != constraints['volume']) {
       Helper.setVolume(constraints['volume'], this);
+    } else if (constraints['video']?['mandatory'] != null) {
+      final Map<String, dynamic> nextMandatory =
+          constraints['video']['mandatory'];
+      final Map<String, dynamic>? currentMandatory =
+          current?['video']?['mandatory'];
+      final nextWidth = nextMandatory['minWidth'];
+      final nextHeight = nextMandatory['minHeight'];
+      final nextFrameRate = nextMandatory['minFrameRate'];
+      if (nextWidth != null && nextWidth != currentMandatory?['minWidth'] ||
+          nextHeight != null && nextHeight != currentMandatory?['minHeight'] ||
+          nextFrameRate != null &&
+              nextFrameRate != currentMandatory?['minFrameRate']) {
+        await Helper.changeVideoResolution(
+          int.parse(nextWidth),
+          int.parse(nextHeight),
+          int.parse(nextFrameRate),
+        );
+      }
     }
-
+    _mediaConstraints = constraints;
     return Future.value();
   }
 

@@ -157,4 +157,14 @@ class Helper {
       AppleNativeAudioManagement.setAppleAudioConfiguration(
           AppleNativeAudioManagement.getAppleAudioConfigurationForMode(mode,
               preferSpeakerOutput: preferSpeakerOutput));
+
+  static Future<void> changeVideoResolution(int width, int height, int fps) =>
+      WebRTC.invokeMethod(
+        'changeVideoResolution',
+        <String, dynamic>{
+          'width': width,
+          'height': height,
+          'fps': fps,
+        },
+      );
 }
