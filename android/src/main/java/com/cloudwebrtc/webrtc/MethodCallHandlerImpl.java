@@ -70,6 +70,7 @@ import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.SessionDescription.Type;
 import org.webrtc.VideoTrack;
+import org.webrtc.VideoSource;
 import org.webrtc.audio.AudioDeviceModule;
 import org.webrtc.audio.JavaAudioDeviceModule;
 import org.webrtc.video.CustomVideoDecoderFactory;
@@ -725,6 +726,21 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         }
         videoRecorderFactory.stopRecording(result);
         break;
+      case "changeVideoResolution": {
+        Integer width = call.argument("width");
+        Integer height = call.argument("height");
+        Integer fps = call.argument("fps");
+        String trackId = call.argument("trackId");
+        VideoSource videoSource = getUserMediaImpl.getVideoSource(trackId);
+        if (videoSource != null) {
+          videoSource.adaptOutputFormat(width, height, fps);
+          result.success(null);
+        } else {
+          resultError("captureFrame", "Video source is not found", result);
+          return;
+        }
+        break;
+      }
       case "captureFrame": {
         String path = call.argument("path");
         String videoTrackId = call.argument("trackId");
