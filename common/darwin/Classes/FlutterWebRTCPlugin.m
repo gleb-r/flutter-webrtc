@@ -453,9 +453,17 @@ MotionDetection* motionDetection;
         int width = ((NSNumber*)argsMap[@"width"]).intValue;
         int height = ((NSNumber*)argsMap[@"height"]).intValue;
         int fps = ((NSNumber*)argsMap[@"fps"]).intValue;
-        RTCVideoTrack* videoTrack = [self getLocalVideoTrack];
-        if (videoTrack == nil) {
-            result([FlutterError errorWithCode:@"No local VideoTrack" message:nil details:nil]);
+        NSString* trackId = argsMap[@"trackId"];
+        RTCVideoTrack* videoTrack;
+        RTCMediaStreamTrack* track = self.localTracks[trackId];
+        if (track == nil) {
+            result([FlutterError errorWithCode:@"No local track found" message:nil details:nil]);
+            return;
+        }
+        if ([@"video" isEqualToString:[track kind]]) {
+            videoTrack = (RTCVideoTrack*)track;
+        } else {
+            result([FlutterError errorWithCode:@"Track is not video track" message:nil details:nil]);
             return;
         }
         RTCVideoSource* videoSource = [videoTrack source];

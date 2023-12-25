@@ -122,16 +122,33 @@ class MediaStreamTrackNative extends MediaStreamTrack {
           nextHeight != null && nextHeight != currentMandatory?['minHeight'] ||
           nextFrameRate != null &&
               nextFrameRate != currentMandatory?['minFrameRate']) {
-        await Helper.changeVideoResolution(
-          int.parse(nextWidth),
-          int.parse(nextHeight),
-          int.parse(nextFrameRate),
+        _changeVideoResolution(
+          trackId: _trackId,
+          width: int.parse(nextWidth),
+          height: int.parse(nextHeight),
+          fps: int.parse(nextFrameRate),
         );
       }
     }
     _mediaConstraints = constraints;
     return Future.value();
   }
+
+  void _changeVideoResolution({
+    required String trackId,
+    required int width,
+    required int height,
+    required int fps,
+  }) =>
+      WebRTC.invokeMethod(
+        'changeVideoResolution',
+        <String, dynamic>{
+          'width': width,
+          'height': height,
+          'fps': fps,
+          'trackId': trackId,
+        },
+      );
 
   @override
   Map<String, dynamic> getSettings() {
