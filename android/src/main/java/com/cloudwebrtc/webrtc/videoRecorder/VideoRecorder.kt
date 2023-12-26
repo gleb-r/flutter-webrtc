@@ -67,14 +67,15 @@ class VideoRecorder(
         val firstFrame = this.firstFrameTime
             ?: throw Exception("First frame not saved")
         val duration = System.currentTimeMillis() - firstFrame
+        Log.d("TAG", "Stop recording without content resolver")
         val values = ContentValues(3)
-        values.put(MediaStore.Video.Media.TITLE, videoFile.name)
-        values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-        values.put(MediaStore.Video.Media.DATA, videoFile.absolutePath)
-        applicationContext.contentResolver.insert(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            values
-        )
+//        values.put(MediaStore.Video.Media.TITLE, videoFile.name)
+//        values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+//        values.put(MediaStore.Video.Media.DATA, videoFile.absolutePath)
+//        applicationContext.contentResolver.insert(
+//            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+//            values
+//        )
         return RecordingResult(
             recordId = recordId,
             videoPath = videoFile.absolutePath,
