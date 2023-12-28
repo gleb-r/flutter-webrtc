@@ -41,7 +41,7 @@
   CVPixelBufferRef pixelBufferRef;
   bool shouldRelease;
   if (![buffer isKindOfClass:[RTCCVPixelBuffer class]]) {
-    pixelBufferRef = [self convertToCVPixelBuffer:frame];
+    pixelBufferRef = [FlutterRTCFrameCapturer convertToCVPixelBuffer:frame];
     shouldRelease = true;
   } else {
     pixelBufferRef = ((RTCCVPixelBuffer *) buffer).pixelBuffer;

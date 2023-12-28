@@ -18,4 +18,9 @@ A new flutter plugin project.
   s.dependency 'WebRTC-SDK', '114.5735.08'
   s.ios.deployment_target = '12.0'
   s.static_framework = true
+  s.pod_target_xcconfig = {
+    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++14',
+    'USER_HEADER_SEARCH_PATHS' => 'Classes/**/*.h'
+  }
+  s.libraries = 'c++'
 end

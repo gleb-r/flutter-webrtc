@@ -9,6 +9,7 @@
 
 @class FlutterRTCVideoRenderer;
 @class FlutterRTCFrameCapturer;
+@class FlutterRTCMediaRecorder;
 
 void postEvent(FlutterEventSink sink, id _Nullable event);
 
@@ -31,6 +32,7 @@ typedef void (^CapturerStopHandler)(CompletionHandler handler);
 @property(nonatomic, strong) NSMutableDictionary<NSString*, RTCMediaStream*>* localStreams;
 @property(nonatomic, strong) NSMutableDictionary<NSString*, RTCMediaStreamTrack*>* localTracks;
 @property(nonatomic, strong) NSMutableDictionary<NSNumber*, FlutterRTCVideoRenderer*>* renders;
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, FlutterRTCMediaRecorder *> *recorders;
 @property(nonatomic, strong)
     NSMutableDictionary<NSString*, CapturerStopHandler>* videoCapturerStopHandlers;
 
