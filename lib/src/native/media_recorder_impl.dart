@@ -17,8 +17,6 @@ class MediaRecorderNative extends MediaRecorder {
     RecorderAudioChannel? audioChannel,
     int? videoWidth,
     int? videoHeight,
-    MediaStreamTrack? audioTrack,
-    int rotationDegrees = 0,
 
     // TODO(cloudwebrtc): add codec/quality options
   }) async {
@@ -32,8 +30,6 @@ class MediaRecorderNative extends MediaRecorder {
       if (videoTrack != null) 'videoTrackId': videoTrack.id,
       'videoWidth': videoWidth,
       'videoHeight': videoHeight,
-      if (audioTrack != null) 'audioTrackId': audioTrack.id,
-      'rotation': rotationDegrees,
       'recorderId': _recorderId,
       'peerConnectionId': videoTrack is MediaStreamTrackNative
           ? videoTrack.peerConnectionId
