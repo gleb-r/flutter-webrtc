@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../../flutter_webrtc.dart';
 import 'i_video_recorder.dart';
@@ -21,6 +18,7 @@ class VideoRecorder extends IVideoRecorder {
       'dirPath': dirPath,
       'streamId': mediaStream.id,
       'enableAudio': enableAudio,
+      'audioTrackId': mediaStream.getAudioTracks().first.id,
       // 'directAudio': directAudio,
     });
     if (isStarted) {
