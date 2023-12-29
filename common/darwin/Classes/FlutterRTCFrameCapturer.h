@@ -14,7 +14,4 @@
 
 + (bool) saveFrame:(RTCVideoFrame *)frame
             toPath:(NSString *) imagePath;
-
-+ (CVPixelBufferRef)convertToCVPixelBuffer:(RTCVideoFrame *) frame;
-
 @end
