@@ -6,7 +6,6 @@
 #import "FlutterRTCPeerConnection.h"
 #import "FlutterRTCVideoRenderer.h"
 #import "FlutterRTCVideoRecorder.h"
-#import "FlutterRTCMediaRecorder.h"
 #import "AudioUtils.h"
 #import "FlutterRTCFrameCryptor.h"
 
@@ -158,7 +157,6 @@ void postEvent(FlutterEventSink sink, id _Nullable event) {
   self.frameCryptors = [NSMutableDictionary new];
   self.keyProviders = [NSMutableDictionary new];
   self.videoCapturerStopHandlers = [NSMutableDictionary new];
-  self.recorders = [NSMutableDictionary new];
 #if TARGET_OS_IPHONE
   AVAudioSession* session = [AVAudioSession sharedInstance];
   [[NSNotificationCenter defaultCenter] addObserver:self
