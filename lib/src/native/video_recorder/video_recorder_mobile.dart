@@ -12,14 +12,11 @@ class VideoRecorder extends IVideoRecorder {
     required String dirPath,
     required MediaStream mediaStream,
     required bool enableAudio,
-    // required bool directAudio,
   }) async {
     final isStarted = await WebRTC.invokeMethod('startRecordVideo', {
       'dirPath': dirPath,
       'streamId': mediaStream.id,
       'enableAudio': enableAudio,
-      'audioTrackId': mediaStream.getAudioTracks().first.id,
-      // 'directAudio': directAudio,
     });
     if (isStarted) {
       listenEventChannel();

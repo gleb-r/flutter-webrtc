@@ -51,7 +51,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     
     
     @objc public func startCapure(videoTrack: RTCVideoTrack,
-                                  audioTrack: RTCAudioTrack,
+                                  audioTrack: RTCAudioTrack?,
                                   dirPath:String,
                                   enableAudio: Bool,
                                   result: FlutterResult?) {
@@ -59,8 +59,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             result?(false)
             return
         }
-        // TODO: enable audio
-        
         self.videoTrack = videoTrack
         self.audioTrack = audioTrack
         self.enableAudio = enableAudio
@@ -111,7 +109,6 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         }
         videoTrack?.remove(self)
         motionDetection.removeLister()
-        audioSink?.bufferCallback = nil
         videoWriterInput?.markAsFinished()
         audioWriterInput?.markAsFinished()
         var writerError = false
@@ -150,8 +147,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     
     private func restartRecording() {
         guard let videoTrack = self.videoTrack,
-              let dirPath = self.dirPath,
-              let audioTrack = self.audioTrack
+              let dirPath = self.dirPath
         else {
             NSLog("Can't restart, videoTrack is nil")
             return
@@ -170,14 +166,21 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         audioWriterInput = nil
         adapter = nil
         firstFrameTime = nil
+        closeAudioSink()
         startCapure(videoTrack: videoTrack,
                     audioTrack: audioTrack,
                     dirPath: dirPath,
                     enableAudio: self.enableAudio,
                     result: nil)
         
-        NSLog("Resturt finished")
+        NSLog("Restart finished")
         
+    }
+
+    private func closeAudioSink() {
+      audioSink?.bufferCallback = nil
+      audioSink?.close()
+      audioSink = nil
     }
     
     private func disposeRecording() {
@@ -185,10 +188,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         adapter = nil
         videoTrack = nil
         audioTrack = nil
-        audioSink = nil
         mediaWriter = nil
-        audioWriterInput = nil
-        videoWriterInput = nil
         adapter = nil
         firstFrameTime = nil
         self.videoPathUrl = nil
@@ -216,7 +216,9 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     private func initialize() {
         guard let frameSize = self.frameSize else { return }
         createVideoWriter(size: frameSize)
-        createAudioWriter()
+        if (enableAudio) {
+          createAudioWriter()
+        }
         startWriting()
         createBuffer(size: frameSize)
         motionDetection.addListener(listener: self)
@@ -281,11 +283,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             }
 
             if audioWriterInput.isReadyForMoreMediaData {
-                if audioWriterInput.append(buffer) {
-                    NSLog("Audio frame appended")
-                } else {
-                    NSLog("Audio frame not appended")
-                }
+                audioWriterInput.append(buffer)
             }
         }
         NSLog("Audio writer created")
