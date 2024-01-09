@@ -418,12 +418,13 @@ MotionDetection* motionDetection;
         NSString *streamId = arguments[@"streamId"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
 
-        bool local = true;
-        RTCVideoTrack *videoTrack = [self getLocalTrack:streamId];
+        RTCVideoTrack *videoTrack = [self getLocalVideoTrack:streamId];
+        RTCMediaStreamTrack *audioTrack = [self getLocalAudioTrack:streamId];
         if (videoTrack == nil) {
-            local = false;
-            videoTrack = [self getRemoteTrack:streamId];
-
+            videoTrack = [self getRemoteVideoTrack:streamId];
+        }
+        if (audioTrack == nil) {
+            audioTrack = [self getRemoteAudioTrack:streamId];
         }
         if (videoTrack == nil) {
           result([FlutterError errorWithCode:@"Can't find video track" message:nil details:nil]);
@@ -436,6 +437,7 @@ MotionDetection* motionDetection;
                                                                motionDetection:motionDetection];
             }
             [videoRecorder startCapureWithVideoTrack:videoTrack
+                                          audioTrack:audioTrack
                                              dirPath:dirPath
                                          enableAudio:[enableAudio boolValue]
                                               result:result];
@@ -472,7 +474,7 @@ MotionDetection* motionDetection;
     } else if ([@"motionDetection" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         DetectionRequest* request = [DetectionRequest fromArgs:argsMap];
-        RTCVideoTrack* videoTrack = [self getLocalVideoTrack];
+        RTCVideoTrack* videoTrack = [self getFirstLocalVideoTrack];
         if (argsMap == nil || request == nil) {
             result([FlutterError errorWithCode:@"Wrong arags in motionDetection" message:nil details:nil]);
             return;
@@ -1517,7 +1519,7 @@ MotionDetection* motionDetection;
   return stream;
 }
 
--(RTCVideoTrack*) getLocalTrack:(NSString*) streamId  {
+-(RTCVideoTrack*) getLocalVideoTrack:(NSString*) streamId  {
     RTCMediaStream* stream = _localStreams[streamId];
     if (stream) {
         for (RTCMediaStreamTrack* track in stream.videoTracks) {
@@ -1529,7 +1531,19 @@ MotionDetection* motionDetection;
     return nil;
 }
 
-- (RTCVideoTrack*) getRemoteTrack:(NSString*) streamId  {
+-(RTCAudioTrack*) getLocalAudioTrack:(NSString*) streamId  {
+    RTCMediaStream* stream = _localStreams[streamId];
+    if (stream) {
+        for (RTCMediaStreamTrack* track in stream.audioTracks) {
+            if ([track isKindOfClass:[RTCAudioTrack class]]) {
+                return (RTCAudioTrack*)track;
+            }
+        }
+    }
+    return nil;
+}
+
+- (RTCVideoTrack*) getRemoteVideoTrack:(NSString*) streamId  {
     RTCMediaStream* stream;
     for (RTCPeerConnection* peerConnection in _peerConnections.allValues) {
         stream = peerConnection.remoteStreams[streamId];
@@ -1541,6 +1555,24 @@ MotionDetection* motionDetection;
         for (RTCMediaStreamTrack* track in stream.videoTracks) {
             if ([track isKindOfClass:[RTCVideoTrack class]]) {
                 return (RTCVideoTrack*)track;
+            }
+        }
+    }
+    return nil;
+}
+
+- (RTCAudioTrack*) getRemoteAudioTrack:(NSString*) streamId  {
+    RTCMediaStream* stream;
+    for (RTCPeerConnection* peerConnection in _peerConnections.allValues) {
+        stream = peerConnection.remoteStreams[streamId];
+        if (stream) {
+            break;
+        }
+    }
+    if (stream) {
+        for (RTCMediaStreamTrack* track in stream.audioTracks) {
+            if ([track isKindOfClass:[RTCAudioTrack class]]) {
+                return (RTCAudioTrack*)track;
             }
         }
     }
@@ -1573,30 +1605,13 @@ MotionDetection* motionDetection;
   return track;
 }
 
-- (RTCVideoTrack*) getLocalVideoTrack {
+- (RTCVideoTrack*) getFirstLocalVideoTrack {
     if ([_localTracks count] == 0) {
         return nil;
     }
     for (RTCMediaStreamTrack* track in  [_localTracks allValues]) {
         if ( [@"video" isEqualToString:[track kind]]) {
             return (RTCVideoTrack*) track;
-        }
-    }
-    return nil;
-}
-
-- (RTCVideoTrack*) getRemoteVideoTrack {
-    for (RTCPeerConnection *peerConnection in _peerConnections.allValues) {
-        for (RTCMediaStreamTrack *track in peerConnection.remoteTracks) {
-            if ([track isKindOfClass:[RTCVideoTrack class]]) {
-                return (RTCVideoTrack *)track;
-            }
-        }
-        for (RTCRtpTransceiver *transceiver in peerConnection.transceivers) {
-            if (transceiver.receiver.track != nil
-                && [transceiver.receiver.track isKindOfClass:[RTCVideoTrack class]]) {
-                return (RTCVideoTrack *)transceiver.receiver.track;
-            }
         }
     }
     return nil;

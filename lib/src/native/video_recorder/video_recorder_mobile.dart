@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/recorder_result.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../../flutter_webrtc.dart';
 import 'i_video_recorder.dart';
@@ -15,13 +12,11 @@ class VideoRecorder extends IVideoRecorder {
     required String dirPath,
     required MediaStream mediaStream,
     required bool enableAudio,
-    // required bool directAudio,
   }) async {
     final isStarted = await WebRTC.invokeMethod('startRecordVideo', {
       'dirPath': dirPath,
       'streamId': mediaStream.id,
       'enableAudio': enableAudio,
-      // 'directAudio': directAudio,
     });
     if (isStarted) {
       listenEventChannel();
