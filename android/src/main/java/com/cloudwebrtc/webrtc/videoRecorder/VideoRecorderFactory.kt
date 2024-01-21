@@ -8,6 +8,9 @@ import com.cloudwebrtc.webrtc.record.OutputAudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.webrtc.VideoTrack
 import org.webrtc.audio.JavaAudioDeviceModule
 
@@ -36,34 +39,35 @@ class VideoRecorderFactory(
     fun startRecording(
         videoTrack: VideoTrack,
         dirPath: String,
-//        audioChannel: AudioChannel?,
         withAudio: Boolean,
         isDirect: Boolean,
         flutterResult: AnyThreadResult
     ) {
-
         if (videoRecorder != null) {
             flutterResult.success(false)
             return
         }
+
         val interceptor = if (withAudio && !isDirect) outputInterceptor else null
 
-
-        val videoRecorder = VideoRecorder(
-            videoTrack = videoTrack,
-            dirPath = dirPath,
-            audioInterceptor = interceptor,
-            withAudio = withAudio,
-            directAudio = isDirect,
-            motionDetection = motionDetection,
-            applicationContext = applicationContext,
-            onDetection = { sendDetection(it) }
-        )
-        videoRecorder.start()
-        this.videoRecorder = videoRecorder
-        flutterResult.success(true)
+        CoroutineScope(Dispatchers.IO).launch {
+            val videoRecorder = VideoRecorder(
+                videoTrack = videoTrack,
+                dirPath = dirPath,
+                audioInterceptor = interceptor,
+                withAudio = withAudio,
+                directAudio = isDirect,
+                motionDetection = motionDetection,
+                applicationContext = applicationContext,
+                onDetection = { sendDetection(it) }
+            )
+            videoRecorder.start()
+            this@VideoRecorderFactory.videoRecorder = videoRecorder
+            launch(Dispatchers.Main) {
+                flutterResult.success(true)
+            }
+        }
     }
-
 
     fun stopRecording(flutterResult: AnyThreadResult) {
         val videoRecorder = this.videoRecorder
@@ -75,17 +79,24 @@ class VideoRecorderFactory(
             )
             return
         }
-        try {
-            val result = videoRecorder.stop()
-            flutterResult.success(result.toMap())
-        } catch (err: Exception) {
-            flutterResult.error(
-                "media recorder stop error",
-                err.message,
-                null
-            )
-        } finally {
-            this.videoRecorder = null
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val result = videoRecorder.stop()
+                launch(Dispatchers.Main) {
+                    flutterResult.success(result.toMap())
+                }
+            } catch (err: Exception) {
+                launch(Dispatchers.Main) {
+                    flutterResult.error(
+                        "media recorder stop error",
+                        err.message,
+                        null
+                    )
+                }
+            } finally {
+                this@VideoRecorderFactory.videoRecorder = null
+            }
         }
     }
 
