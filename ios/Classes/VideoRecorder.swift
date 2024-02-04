@@ -59,26 +59,31 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             result?(false)
             return
         }
-        self.videoTrack = videoTrack
-        self.audioTrack = audioTrack
-        self.enableAudio = enableAudio
-        let recordId = ProcessInfo.processInfo.globallyUniqueString
-        let videoPath = URL(fileURLWithPath: dirPath).appendingPathComponent(recordId).appendingPathExtension("mp4")
-        self.dirPath = dirPath
-        NSLog("video path: \(videoPath.path)")
-        do {
-            mediaWriter = try AVAssetWriter.init(outputURL: videoPath, fileType: AVFileType.mp4)
-        } catch {
-            result?(FlutterError(code: "failed to create writer",
-                                message: error.localizedDescription,
-                                details: nil))
-            return
+        DispatchQueue.global().async {
+            self.videoTrack = videoTrack
+            self.audioTrack = audioTrack
+            self.enableAudio = enableAudio
+            let recordId = ProcessInfo.processInfo.globallyUniqueString
+            let videoPath = URL(fileURLWithPath: dirPath).appendingPathComponent(recordId).appendingPathExtension("mp4")
+            self.dirPath = dirPath
+            NSLog("video path: \(videoPath.path)")
+            do {
+                self.mediaWriter = try AVAssetWriter.init(outputURL: videoPath, fileType: AVFileType.mp4)
+            } catch {
+                result?(FlutterError(code: "failed to create writer",
+                                    message: error.localizedDescription,
+                                    details: nil))
+                return
+            }
+            videoTrack.add(self)
+            self.videoPathUrl = videoPath
+            self.recordId = recordId
+            self.state = .start
+            DispatchQueue.main.async {
+                NSLog("Recording started")
+                result?(true)
+            }
         }
-        videoTrack.add(self)
-        self.videoPathUrl = videoPath
-        self.recordId = recordId
-        self.state = .start
-        result?(true)
     }
     
     @objc public func stopCapure(result:  @escaping FlutterResult) {
@@ -107,42 +112,46 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
             )
             return
         }
-        videoTrack?.remove(self)
-        motionDetection.removeLister()
-        videoWriterInput?.markAsFinished()
-        audioWriterInput?.markAsFinished()
-        var writerError = false
-        mediaWriter?.finishWriting { [weak self] in
-            guard let self = self, let writer = self.mediaWriter else { return }
-            if writer.status == .failed {
-                writerError = true
-                // TODO: send by event channel
-                NSLog("Video writing failed: %@", writer.error?.localizedDescription ?? "")
-                result(FlutterError(code: "Stop error",
-                                    message: "writer status is failed",
-                                    details: nil))
-            } else {
-                NSLog("Video witing fished with: %@", writer.status.rawValue)
+        DispatchQueue.global().async {
+            self.videoTrack?.remove(self)
+            self.motionDetection.removeLister()
+            self.videoWriterInput?.markAsFinished()
+            self.audioWriterInput?.markAsFinished()
+            var writerError = false
+            self.mediaWriter?.finishWriting { [weak self] in
+                guard let self = self, let writer = self.mediaWriter else { return }
+                if writer.status == .failed {
+                    writerError = true
+                    // TODO: send by event channel
+                    NSLog("Video writing failed: %@", writer.error?.localizedDescription ?? "")
+                    result(FlutterError(code: "Stop error",
+                                        message: "writer status is failed",
+                                        details: nil))
+                } else {
+                    NSLog("Video witing fished with: %@", writer.status.rawValue)
+                }
             }
+
+            let durationMs: Int
+            if let firstFrameTime = self.firstFrameTime {
+                durationMs = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
+            } else { durationMs = 0 }
+            let recResult = RecordingResult(
+                recordId: recordId,
+                videoPath: videoUrl.path,
+                durationMs: durationMs,
+                frameInterval: self.motionDetection.frameIntervalMs,
+                rotationDegree: self.rotation.rawValue)
+
+            if !writerError {
+                NSLog("Send rec result")
+                DispatchQueue.main.async {
+                    result(recResult.toMap())
+                }
+            }
+            self.disposeRecording()
+            NSLog("Video result sent")
         }
-        
-        let durationMs: Int
-        if let firstFrameTime = firstFrameTime {
-            durationMs = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
-        } else { durationMs = 0 }
-        let recResult = RecordingResult(
-            recordId: recordId,
-            videoPath: videoUrl.path,
-            durationMs: durationMs,
-            frameInterval: motionDetection.frameIntervalMs,
-            rotationDegree: rotation.rawValue)
-        
-        if !writerError {
-            NSLog("send rec result")
-            result(recResult.toMap())
-        }
-        disposeRecording()
-        NSLog("Video result sent")
     }
     
     private func restartRecording() {
@@ -184,13 +193,13 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
     }
     
     private func disposeRecording() {
-        frameSize = nil
-        adapter = nil
-        videoTrack = nil
-        audioTrack = nil
-        mediaWriter = nil
-        adapter = nil
-        firstFrameTime = nil
+        self.frameSize = nil
+        self.adapter = nil
+        self.videoTrack = nil
+        self.audioTrack = nil
+        self.mediaWriter = nil
+        self.adapter = nil
+        self.firstFrameTime = nil
         self.videoPathUrl = nil
         self.recordId = nil
         self.dirPath = nil
@@ -204,7 +213,7 @@ public class VideoRecorder:NSObject, RTCVideoRenderer {
         }
         self.frameSize = size
     }
-    
+
     public func renderFrame(_ frame: RTCVideoFrame?) {
         switch(state) {
         case .idle: return
