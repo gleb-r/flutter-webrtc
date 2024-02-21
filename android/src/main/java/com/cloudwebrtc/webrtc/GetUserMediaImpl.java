@@ -65,6 +65,9 @@ import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
+import org.webrtc.CapturerObserver;
+import org.webrtc.VideoFrame;
+import org.webrtc.VideoFrame.Buffer;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
 import org.webrtc.audio.JavaAudioDeviceModule;
@@ -517,7 +520,7 @@ class GetUserMediaImpl {
                         SurfaceTextureHelper surfaceTextureHelper =
                                 SurfaceTextureHelper.create(threadName, EglUtils.getRootEglBaseContext());
                         videoCapturer.initialize(
-                                surfaceTextureHelper, applicationContext, videoSource.getCapturerObserver());
+                                surfaceTextureHelper, applicationContext, new CustomCapturerObserver(videoSource.getCapturerObserver()));
 
                         WindowManager wm =
                                 (WindowManager) applicationContext.getSystemService(Context.WINDOW_SERVICE);
@@ -735,7 +738,7 @@ class GetUserMediaImpl {
         SurfaceTextureHelper surfaceTextureHelper =
                 SurfaceTextureHelper.create(threadName, EglUtils.getRootEglBaseContext());
         videoCapturer.initialize(
-                surfaceTextureHelper, applicationContext, videoSource.getCapturerObserver());
+                surfaceTextureHelper, applicationContext, new CustomCapturerObserver(videoSource.getCapturerObserver()));
 
         VideoCapturerInfo info = new VideoCapturerInfo();
 
@@ -1290,5 +1293,70 @@ class GetUserMediaImpl {
             }
         }
         return -1;
+    }
+}
+
+class CustomCapturerObserver implements CapturerObserver {
+    private final CapturerObserver capturer;
+
+    CustomCapturerObserver(CapturerObserver capturer) {
+        this.capturer = capturer;
+    }
+
+    @Override
+    public void onCapturerStarted(boolean success) {
+        this.capturer.onCapturerStarted(success);
+    }
+
+    @Override
+    public void onCapturerStopped() {
+        this.capturer.onCapturerStopped();
+    }
+
+    @Override
+    public void onFrameCaptured(VideoFrame frame) {
+        this.capturer.onFrameCaptured(makeFrameMoreGreen(frame));
+    }
+
+    private VideoFrame makeFrameMoreGreen(VideoFrame frame) {
+        VideoFrame.Buffer buffer = frame.getBuffer();
+        buffer.retain(); // Retain the buffer to prevent it from being released while we're using it
+
+        // Create a new buffer with the same dimensions as the original buffer
+        int width = buffer.getWidth();
+        int height = buffer.getHeight();
+        VideoFrame.I420Buffer i420Buffer = buffer.toI420();
+
+        // Get the Y, U, and V planes from the buffer
+        ByteBuffer uPlane = i420Buffer.getDataU();
+        ByteBuffer vPlane = i420Buffer.getDataV();
+        int uStride = i420Buffer.getStrideU();
+        int vStride = i420Buffer.getStrideV();
+
+        // Adjust the U and V components to make the frame more green
+        // This is a simple example where we decrease the U component and increase the V component
+        adjustGreen(uPlane, uStride, width / 2, height / 2);
+        adjustGreen(vPlane, vStride, width / 2, height / 2);
+
+        // Create a new VideoFrame with the modified buffer
+        VideoFrame modifiedFrame = new VideoFrame(i420Buffer, frame.getRotation(), frame.getTimestampNs());
+        buffer.release(); // Release the original buffer
+        return modifiedFrame;
+    }
+
+    private void adjustGreen(ByteBuffer plane, int stride, int width, int height) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int index = y * stride + x;
+                byte value = plane.get(index);
+
+                // Adjust the value to make the color more green
+                // You can tweak these values to achieve the desired "night mode" effect
+                value = (byte) Math.max(0, Math.min(255, value - 10)); // Decrease U component
+                value = (byte) Math.max(0, Math.min(255, value + 10)); // Increase V component
+
+                plane.put(index, value);
+            }
+        }
     }
 }
