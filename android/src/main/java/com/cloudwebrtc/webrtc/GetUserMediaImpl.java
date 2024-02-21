@@ -81,6 +81,21 @@ import java.util.Map;
 
 import io.flutter.plugin.common.MethodChannel.Result;
 
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
+import android.graphics.YuvImage;
+import android.graphics.Bitmap.Config;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+import org.webrtc.VideoFrame;
+import org.webrtc.VideoFrame.Buffer;
+import org.webrtc.VideoFrame.I420Buffer;
+import android.graphics.BitmapFactory;
+
+
 /**
  * The implementation of {@code getUserMedia} extracted into a separate file in order to reduce
  * complexity and to (somewhat) separate concerns.
@@ -1322,41 +1337,191 @@ class CustomCapturerObserver implements CapturerObserver {
         VideoFrame.Buffer buffer = frame.getBuffer();
         buffer.retain(); // Retain the buffer to prevent it from being released while we're using it
 
-        // Create a new buffer with the same dimensions as the original buffer
-        int width = buffer.getWidth();
-        int height = buffer.getHeight();
-        VideoFrame.I420Buffer i420Buffer = buffer.toI420();
+        // Convert the frame buffer to a Bitmap
+        Bitmap bitmap = bufferToBitmap(buffer);
 
-        // Get the Y, U, and V planes from the buffer
-        ByteBuffer uPlane = i420Buffer.getDataU();
-        ByteBuffer vPlane = i420Buffer.getDataV();
-        int uStride = i420Buffer.getStrideU();
-        int vStride = i420Buffer.getStrideV();
+        // Apply the green filter to the Bitmap
+        bitmap = applyGreenFilter(bitmap);
 
-        // Adjust the U and V components to make the frame more green
-        // This is a simple example where we decrease the U component and increase the V component
-        adjustGreen(uPlane, uStride, width / 2, height / 2);
-        adjustGreen(vPlane, vStride, width / 2, height / 2);
+        // Convert the Bitmap back to a VideoFrame buffer
+        VideoFrame.Buffer newBuffer = bitmapToBuffer(bitmap, frame.getRotation());
 
         // Create a new VideoFrame with the modified buffer
-        VideoFrame modifiedFrame = new VideoFrame(i420Buffer, frame.getRotation(), frame.getTimestampNs());
+        VideoFrame modifiedFrame = new VideoFrame(newBuffer, frame.getRotation(), frame.getTimestampNs());
         buffer.release(); // Release the original buffer
+        newBuffer.release(); // Release the new buffer
         return modifiedFrame;
     }
 
-    private void adjustGreen(ByteBuffer plane, int stride, int width, int height) {
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int index = y * stride + x;
-                byte value = plane.get(index);
+    private Bitmap bufferToBitmap(VideoFrame.Buffer buffer) {
+        // Convert the frame buffer to a Bitmap
+        I420Buffer i420Buffer = buffer.toI420();
+        int width = i420Buffer.getWidth();
+        int height = i420Buffer.getHeight();
+        YuvImage yuvImage = new YuvImage(i420ToNV21(i420Buffer), android.graphics.ImageFormat.NV21, width, height, null);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        yuvImage.compressToJpeg(new android.graphics.Rect(0, 0, width, height), 100, out);
+        byte[] imageBytes = out.toByteArray();
+        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+    }
 
-                // Adjust the value to make the color more green
-                // You can tweak these values to achieve the desired "night mode" effect
-                value = (byte) Math.max(0, Math.min(255, value - 10)); // Decrease U component
-                value = (byte) Math.max(0, Math.min(255, value + 10)); // Increase V component
+    private Bitmap applyGreenFilter(Bitmap bitmap) {
+        // Apply a green filter to the Bitmap
+        ColorMatrix colorMatrix = new ColorMatrix(new float[]{
+                1f, 0f, 0f, 0f, 0f,
+                0f, 1.5f, 0f, 0f, 0f,
+                0f, 0f, 1f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+        });
 
-                plane.put(index, value);
+        ColorMatrixColorFilter filter = new ColorMatrixColorFilter(colorMatrix);
+        Paint paint = new Paint();
+        paint.setColorFilter(filter);
+
+        Bitmap newBitmap = Bitmap.createBitmap(bitmap.getWidth(), bitmap.getHeight(), bitmap.getConfig());
+        Canvas canvas = new Canvas(newBitmap);
+        canvas.drawBitmap(bitmap, 0, 0, paint);
+
+        return newBitmap;
+    }
+
+    private VideoFrame.Buffer bitmapToBuffer(Bitmap bitmap, int rotation) {
+        // Convert the Bitmap back to a VideoFrame buffer
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        int[] argb = new int[width * height];
+        bitmap.getPixels(argb, 0, width, 0, 0, width, height);
+        ByteBuffer yuvBuffer = ByteBuffer.allocateDirect(width * height * 3 / 2);
+        byte[] yuv420 = ArgbToI420(argb, width, height);
+        yuvBuffer.put(yuv420, 0, yuv420.length);
+        return new I420Buffer() {
+            @Override
+            public int getWidth() {
+                return width;
+            }
+
+            @Override
+            public int getHeight() {
+                return height;
+            }
+
+            @Override
+            public ByteBuffer getDataY() {
+//                return yuvBuffer.slice();
+                return yuvBuffer;
+            }
+
+            @Override
+            public ByteBuffer getDataU() {
+//                return (ByteBuffer) yuvBuffer.position(width * height).slice();
+                return (ByteBuffer) yuvBuffer.position(width * height);
+            }
+
+            @Override
+            public ByteBuffer getDataV() {
+//                return (ByteBuffer) yuvBuffer.position(width * height * 5 / 4).slice();
+                return (ByteBuffer) yuvBuffer.position(width * height * 5 / 4);
+            }
+
+            @Override
+            public int getStrideY() {
+                return width;
+            }
+
+            @Override
+            public int getStrideU() {
+                return width / 2;
+            }
+
+            @Override
+            public int getStrideV() {
+                return width / 2;
+            }
+
+            @Override
+            public I420Buffer toI420() {
+                return this;
+            }
+
+            @Override
+            public void retain() {
+            }
+
+            @Override
+            public void release() {
+            }
+
+            @Override
+            public VideoFrame.Buffer cropAndScale(
+                    int srcX, int srcY, int srcWidth, int srcHeight, int dstWidth, int dstHeight) {
+                return this;
+            }
+        };
+    }
+
+    private byte[] i420ToNV21(I420Buffer i420Buffer) {
+        // Convert I420 frame to NV21 format
+        int width = i420Buffer.getWidth();
+        int height = i420Buffer.getHeight();
+        byte[] nv21 = new byte[width * height * 3 / 2];
+        ByteBuffer yBuffer = i420Buffer.getDataY();
+        ByteBuffer uBuffer = i420Buffer.getDataU();
+        ByteBuffer vBuffer = i420Buffer.getDataV();
+        int yStride = i420Buffer.getStrideY();
+        int uStride = i420Buffer.getStrideU();
+        int vStride = i420Buffer.getStrideV();
+
+        for (int i = 0; i < height; i++) {
+            yBuffer.position(i * yStride);
+            yBuffer.get(nv21, i * width, width);
+        }
+
+        for (int i = 0; i < height / 2; i++) {
+            for (int j = 0; j < width / 2; j++) {
+                nv21[width * height + 2 * i * width / 2 + 2 * j] = vBuffer.get(i * vStride + j);
+                nv21[width * height + 2 * i * width / 2 + 2 * j + 1] = uBuffer.get(i * uStride + j);
             }
         }
+
+        return nv21;
+    }
+
+    private byte[] ArgbToI420(int[] argb, int width, int height) {
+        byte[] yuv420 = new byte[width * height * 3 / 2];
+        int frameSize = width * height;
+        int chromaStride = width / 2;
+        int yIndex = 0;
+        int uIndex = frameSize;
+        int vIndex = frameSize + frameSize / 4;
+
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
+                int rgb = argb[j * width + i];
+                int r = (rgb >> 16) & 0xff;
+                int g = (rgb >> 8) & 0xff;
+                int b = rgb & 0xff;
+
+                // Convert RGB to YUV
+                int y = (int) (0.299 * r + 0.587 * g + 0.114 * b);
+                int u = (int) ((b - y) * 0.565 + 128);
+                int v = (int) ((r - y) * 0.713 + 128);
+
+                // Clamp values to the [0, 255] range
+                y = Math.max(0, Math.min(255, y));
+                u = Math.max(0, Math.min(255, u));
+                v = Math.max(0, Math.min(255, v));
+
+                // Set the Y value
+                yuv420[yIndex++] = (byte) y;
+
+                // Set the U and V values for every second pixel
+                if (j % 2 == 0 && i % 2 == 0) {
+                    yuv420[uIndex++] = (byte) u;
+                    yuv420[vIndex++] = (byte) v;
+                }
+            }
+        }
+
+        return yuv420;
     }
 }
