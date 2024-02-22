@@ -79,6 +79,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 
 import io.flutter.plugin.common.MethodChannel.Result;
@@ -1300,9 +1303,14 @@ class GetUserMediaImpl {
 
 class CustomCapturerObserver implements CapturerObserver {
     private final CapturerObserver capturer;
+    private final ExecutorService executorService;
+    private boolean isCapturerStarted = false;
+    private VideoFrame lastFrame;
+    private int frameCount = 0;
 
     CustomCapturerObserver(CapturerObserver capturer) {
         this.capturer = capturer;
+        this.executorService = Executors.newSingleThreadExecutor(); // Create a single-threaded executor
     }
 
     @Override
@@ -1313,11 +1321,23 @@ class CustomCapturerObserver implements CapturerObserver {
     @Override
     public void onCapturerStopped() {
         this.capturer.onCapturerStopped();
+        this.executorService.shutdown(); // Shut down the executor service when the capturer is stopped
     }
 
     @Override
     public void onFrameCaptured(VideoFrame frame) {
-        this.capturer.onFrameCaptured(makeFrameMoreGreen(frame));
+        if (lastFrame != null) {
+            this.capturer.onFrameCaptured(lastFrame);
+        }
+        if (isCapturerStarted) {
+            Log.d("CustomCapturerObserver", "onFrameCaptured: Capturer is already started, skipping frame");
+            return;
+        }
+        Log.d("CustomCapturerObserver", "onFrameCaptured: Modifying frame, count = " + frameCount);
+        isCapturerStarted = true;
+        lastFrame = makeFrameMoreGreen(frame);
+        isCapturerStarted = false;
+        frameCount++;
     }
 
     private VideoFrame makeFrameMoreGreen(VideoFrame frame) {
@@ -1335,10 +1355,17 @@ class CustomCapturerObserver implements CapturerObserver {
         int uStride = i420Buffer.getStrideU();
         int vStride = i420Buffer.getStrideV();
 
-        // Adjust the U and V components to make the frame more green
-        // This is a simple example where we decrease the U component and increase the V component
-        adjustGreen(uPlane, uStride, width / 2, height / 2);
-        adjustGreen(vPlane, vStride, width / 2, height / 2);
+        // Adjust the U and V components to make the frame more green in a separate thread
+        Future<?> uFuture = executorService.submit(() -> adjustGreen(uPlane, uStride, width / 2, height / 2));
+        Future<?> vFuture = executorService.submit(() -> adjustGreen(vPlane, vStride, width / 2, height / 2));
+
+        // Wait for the adjustments to complete
+        try {
+            uFuture.get();
+            vFuture.get();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Create a new VideoFrame with the modified buffer
         VideoFrame modifiedFrame = new VideoFrame(i420Buffer, frame.getRotation(), frame.getTimestampNs());
