@@ -1073,7 +1073,7 @@ class GetUserMediaImpl {
 
                 final double desiredZoomLevel = Math.max(1.0, Math.min(zoomLevel, maxZoomLevel));
 
-                float ratio = 1.0f / (float)desiredZoomLevel;
+                float ratio = 1.0f / (float) desiredZoomLevel;
 
                 if (rect != null) {
                     int croppedWidth = rect.width() - Math.round((float) rect.width() * ratio);
@@ -1122,10 +1122,10 @@ class GetUserMediaImpl {
             Camera.Parameters params = camera.getParameters();
             params.setFlashMode(
                     isTorchOn ? Camera.Parameters.FLASH_MODE_TORCH : Camera.Parameters.FLASH_MODE_OFF);
-            if(params.isZoomSupported()) {
+            if (params.isZoomSupported()) {
                 int maxZoom = params.getMaxZoom();
                 double desiredZoom = Math.max(0, Math.min(zoomLevel, maxZoom));
-                params.setZoom((int)desiredZoom);
+                params.setZoom((int) desiredZoom);
                 result.success(null);
                 return;
             }
@@ -1307,6 +1307,11 @@ class CustomCapturerObserver implements CapturerObserver {
     private boolean isCapturerStarted = false;
     private VideoFrame lastFrame;
     private int frameCount = 0;
+    private long lastTimeCall = 0;
+    private double frameCaptureAvgInterval = 0.0;
+    private long totalFrameCaptureTime = 0;
+
+    private int skipNextFramesCount = 0;
 
     CustomCapturerObserver(CapturerObserver capturer) {
         this.capturer = capturer;
@@ -1326,23 +1331,52 @@ class CustomCapturerObserver implements CapturerObserver {
 
     @Override
     public void onFrameCaptured(VideoFrame frame) {
+        if (lastTimeCall > 0) {
+            long time = System.currentTimeMillis() - lastTimeCall;
+//            Log.d("CustomCapturerObserver", "onFrameCaptured: Time between frames = " + time + ", avg = " + frameCaptureAvgInterval);
+        }
+//        boolean skipDueToTime = lastTimeCall > 0 && System.currentTimeMillis() - lastTimeCall > 70;
+        boolean skipDueToTime = false;
         if (lastFrame != null) {
             this.capturer.onFrameCaptured(lastFrame);
         }
-        if (isCapturerStarted) {
-            Log.d("CustomCapturerObserver", "onFrameCaptured: Capturer is already started, skipping frame");
+        updateFrameCaptureAvgInterval();
+        if (isCapturerStarted || skipDueToTime || skipNextFramesCount > 0) {
+            if (skipDueToTime) {
+                Log.d("CustomCapturerObserver", "Skip Due time");
+            } else if (skipNextFramesCount > 0) {
+                Log.d("CustomCapturerObserver", "Skip next frame: " + skipNextFramesCount);
+                skipNextFramesCount -= 1;
+            } else {
+                Log.d("CustomCapturerObserver", "onFrameCaptured: Capturer is already started, skipping frame");
+            }
             return;
         }
-        Log.d("CustomCapturerObserver", "onFrameCaptured: Modifying frame, count = " + frameCount);
+//        Log.d("CustomCapturerObserver", "onFrameCaptured: Modifying frame, count = " + frameCount);
         isCapturerStarted = true;
-        lastFrame = makeFrameMoreGreen(frame);
-        isCapturerStarted = false;
-        frameCount++;
+        frame.retain();
+        executorService.submit(() -> makeFrameMoreGreen(frame));
     }
 
-    private VideoFrame makeFrameMoreGreen(VideoFrame frame) {
+    private void updateFrameCaptureAvgInterval() {
+        long now = System.currentTimeMillis();
+        if (lastTimeCall > 0) {
+            frameCount++;
+            long dif = now - lastTimeCall;
+            totalFrameCaptureTime += dif;
+            frameCaptureAvgInterval = totalFrameCaptureTime / frameCount;
+        }
+//        Log.d("CustomCapturerObserver", "updateFrameCaptureAvgInterval: frameCaptureAvgInterval = " + frameCaptureAvgInterval);
+//        Log.d("CustomCapturerObserver", "updateFrameCaptureAvgInterval: frameCount = " + frameCount);
+//        Log.d("CustomCapturerObserver", "updateFrameCaptureAvgInterval: totalFrameCaptureTime = " + totalFrameCaptureTime);
+//        Log.d("CustomCapturerObserver", "updateFrameCaptureAvgInterval: diff = " + (now - lastTimeCall));
+        lastTimeCall = now;
+    }
+
+    private void makeFrameMoreGreen(VideoFrame frame) {
+        long startTime = System.currentTimeMillis();
         VideoFrame.Buffer buffer = frame.getBuffer();
-        buffer.retain(); // Retain the buffer to prevent it from being released while we're using it
+//        buffer.retain(); // Retain the buffer to prevent it from being released while we're using it
 
         // Create a new buffer with the same dimensions as the original buffer
         int width = buffer.getWidth();
@@ -1356,21 +1390,20 @@ class CustomCapturerObserver implements CapturerObserver {
         int vStride = i420Buffer.getStrideV();
 
         // Adjust the U and V components to make the frame more green in a separate thread
-        Future<?> uFuture = executorService.submit(() -> adjustGreen(uPlane, uStride, width / 2, height / 2));
-        Future<?> vFuture = executorService.submit(() -> adjustGreen(vPlane, vStride, width / 2, height / 2));
-
-        // Wait for the adjustments to complete
-        try {
-            uFuture.get();
-            vFuture.get();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        adjustGreen(uPlane, uStride, width / 2, height / 2);
+        adjustGreen(vPlane, vStride, width / 2, height / 2);
 
         // Create a new VideoFrame with the modified buffer
         VideoFrame modifiedFrame = new VideoFrame(i420Buffer, frame.getRotation(), frame.getTimestampNs());
-        buffer.release(); // Release the original buffer
-        return modifiedFrame;
+        buffer.release();
+        lastFrame = modifiedFrame;
+        isCapturerStarted = false;
+        long calcTime = System.currentTimeMillis() - startTime;
+        if (frameCaptureAvgInterval > 0 && calcTime > frameCaptureAvgInterval) {
+            skipNextFramesCount = (int) (calcTime / frameCaptureAvgInterval);
+            Log.d("CustomCapturerObserver", "set skipNextFramesCount = " + skipNextFramesCount);
+        }
+//        Log.d("CustomCapturerObserver", "makeFrameMoreGreen calc time = " + calcTime);
     }
 
     private void adjustGreen(ByteBuffer plane, int stride, int width, int height) {
