@@ -1306,9 +1306,13 @@ class CustomCapturerObserver implements CapturerObserver {
     private final ExecutorService executorService;
     private boolean isCapturerStarted = false;
     private VideoFrame lastFrame;
-    private int frameCount = 0;
+
+    // TODO: Reset param on max value
+    private long frameCount = 0;
     private long lastTimeCall = 0;
     private double frameCaptureAvgInterval = 0.0;
+
+    // TODO: Reset param on max value
     private long totalFrameCaptureTime = 0;
 
     private int skipNextFramesCount = 0;
@@ -1331,20 +1335,13 @@ class CustomCapturerObserver implements CapturerObserver {
 
     @Override
     public void onFrameCaptured(VideoFrame frame) {
-        if (lastTimeCall > 0) {
-            long time = System.currentTimeMillis() - lastTimeCall;
-//            Log.d("CustomCapturerObserver", "onFrameCaptured: Time between frames = " + time + ", avg = " + frameCaptureAvgInterval);
-        }
-//        boolean skipDueToTime = lastTimeCall > 0 && System.currentTimeMillis() - lastTimeCall > 70;
         boolean skipDueToTime = false;
         if (lastFrame != null) {
             this.capturer.onFrameCaptured(lastFrame);
         }
         updateFrameCaptureAvgInterval();
-        if (isCapturerStarted || skipDueToTime || skipNextFramesCount > 0) {
-            if (skipDueToTime) {
-                Log.d("CustomCapturerObserver", "Skip Due time");
-            } else if (skipNextFramesCount > 0) {
+        if (isCapturerStarted || skipNextFramesCount > 0) {
+            if (skipNextFramesCount > 0) {
                 Log.d("CustomCapturerObserver", "Skip next frame: " + skipNextFramesCount);
                 skipNextFramesCount -= 1;
             } else {
@@ -1397,12 +1394,12 @@ class CustomCapturerObserver implements CapturerObserver {
         VideoFrame modifiedFrame = new VideoFrame(i420Buffer, frame.getRotation(), frame.getTimestampNs());
         buffer.release();
         lastFrame = modifiedFrame;
-        isCapturerStarted = false;
         long calcTime = System.currentTimeMillis() - startTime;
         if (frameCaptureAvgInterval > 0 && calcTime > frameCaptureAvgInterval) {
-            skipNextFramesCount = (int) (calcTime / frameCaptureAvgInterval);
+            skipNextFramesCount = (int) (calcTime / frameCaptureAvgInterval) * 2;
             Log.d("CustomCapturerObserver", "set skipNextFramesCount = " + skipNextFramesCount);
         }
+        isCapturerStarted = false;
 //        Log.d("CustomCapturerObserver", "makeFrameMoreGreen calc time = " + calcTime);
     }
 
