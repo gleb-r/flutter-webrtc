@@ -158,6 +158,11 @@ class Helper {
           AppleNativeAudioManagement.getAppleAudioConfigurationForMode(mode,
               preferSpeakerOutput: preferSpeakerOutput));
 
-  static Future<void> switchNightMode() =>
-      WebRTC.invokeMethod('switchNightMode');
+  static Future<void> switchNightMode() {
+    if (WebRTC.platformIsAndroid) {
+      return WebRTC.invokeMethod('switchNightMode');
+    } else {
+      throw UnimplementedError();
+    }
+  }
 }
