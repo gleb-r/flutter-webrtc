@@ -744,7 +744,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       }
       case "switchNightMode": {
         GlRectDrawerWrapper.isNightMode = !GlRectDrawerWrapper.isNightMode;
-        result.success(null);
+        result.success(GlRectDrawerWrapper.isNightMode);
+      }
+      case "isNightModeEnabled": {
+        result.success(GlRectDrawerWrapper.isNightMode);
       }
       case "captureFrame": {
         String path = call.argument("path");
