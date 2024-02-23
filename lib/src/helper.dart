@@ -157,4 +157,7 @@ class Helper {
       AppleNativeAudioManagement.setAppleAudioConfiguration(
           AppleNativeAudioManagement.getAppleAudioConfigurationForMode(mode,
               preferSpeakerOutput: preferSpeakerOutput));
+
+  static Future<void> switchNightMode() =>
+      WebRTC.invokeMethod('switchNightMode');
 }

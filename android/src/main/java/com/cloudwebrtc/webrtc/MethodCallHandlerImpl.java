@@ -35,6 +35,7 @@ import com.cloudwebrtc.webrtc.utils.ObjectType;
 import com.cloudwebrtc.webrtc.utils.PermissionUtils;
 import com.cloudwebrtc.webrtc.utils.Utils;
 import com.cloudwebrtc.webrtc.videoRecorder.VideoRecorderFactory;
+import com.cloudwebrtc.webrtc.GlRectDrawerWrapper;
 
 import com.twilio.audioswitch.AudioDevice;
 
@@ -740,6 +741,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           return;
         }
         break;
+      }
+      case "switchNightMode": {
+        GlRectDrawerWrapper.isNightMode = !GlRectDrawerWrapper.isNightMode;
+        result.success(null);
       }
       case "captureFrame": {
         String path = call.argument("path");

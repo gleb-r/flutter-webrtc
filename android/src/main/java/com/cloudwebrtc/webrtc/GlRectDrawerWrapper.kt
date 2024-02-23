@@ -9,6 +9,7 @@ import java.util.HashMap
 class GlRectDrawerWrapper : GlRectDrawer() {
 
     companion object {
+        @JvmField
         var isNightMode = true
 
         // 0.1 -> 2.5 // def 1
