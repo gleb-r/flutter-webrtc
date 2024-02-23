@@ -6,6 +6,7 @@ import android.graphics.SurfaceTexture;
 import com.cloudwebrtc.webrtc.utils.AnyThreadSink;
 import com.cloudwebrtc.webrtc.utils.ConstraintsMap;
 import com.cloudwebrtc.webrtc.utils.EglUtils;
+import com.cloudwebrtc.webrtc.GlRectDrawerWrapper;
 
 import java.util.List;
 
@@ -103,7 +104,7 @@ public class FlutterRTCVideoRenderer implements EventChannel.StreamHandler {
     public FlutterRTCVideoRenderer(SurfaceTexture texture, TextureRegistry.SurfaceTextureEntry entry) {
         this.surfaceTextureRenderer = new SurfaceTextureRenderer("");
         listenRendererEvents();
-        surfaceTextureRenderer.init(EglUtils.getRootEglBaseContext(), rendererEvents);
+        surfaceTextureRenderer.init(EglUtils.getRootEglBaseContext(), rendererEvents, EglBase.CONFIG_PLAIN, new GlRectDrawerWrapper());
         surfaceTextureRenderer.surfaceCreated(texture);
 
         this.texture = texture;
@@ -237,7 +238,7 @@ public class FlutterRTCVideoRenderer implements EventChannel.StreamHandler {
 
             surfaceTextureRenderer.release();
             listenRendererEvents();
-            surfaceTextureRenderer.init(sharedContext, rendererEvents);
+            surfaceTextureRenderer.init(sharedContext, rendererEvents, EglBase.CONFIG_PLAIN, new GlRectDrawerWrapper());
             surfaceTextureRenderer.surfaceCreated(texture);
 
             videoTrack.addSink(surfaceTextureRenderer);
