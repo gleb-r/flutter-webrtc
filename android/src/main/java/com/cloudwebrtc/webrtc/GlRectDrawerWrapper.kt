@@ -10,7 +10,7 @@ class GlRectDrawerWrapper : GlRectDrawer() {
 
     companion object {
         @JvmField
-        var isNightMode = true
+        var isNightMode = false
 
         // 0.1 -> 2.5 // def 1
         var TEXTURE_BRIGHTNESS_PERCENT = 2.5f
