@@ -106,6 +106,7 @@ class GetUserMediaImpl {
     private final Map<String, SurfaceTextureHelper> mSurfaceTextureHelpers = new HashMap<>();
     private final StateProvider stateProvider;
     private final Context applicationContext;
+    private final Map<String, VideoSource> videoSources = new HashMap<>();
 
     static final int minAPILevel = Build.VERSION_CODES.LOLLIPOP;
 
@@ -143,6 +144,10 @@ class GetUserMediaImpl {
         } catch (IllegalStateException ise) {
 
         }
+    }
+
+    public VideoSource getVideoSource(String trackId) {
+        return videoSources.get(trackId);
     }
 
     public void requestCapturePermission(final Result result) {
@@ -563,6 +568,7 @@ class GetUserMediaImpl {
         mVideoCapturers.put(trackId, info);
 
         tracks[0] = pcFactory.createVideoTrack(trackId, videoSource);
+        videoSources.put(trackId, videoSource);
 
         ConstraintsArray audioTracks = new ConstraintsArray();
         ConstraintsArray videoTracks = new ConstraintsArray();
@@ -814,6 +820,7 @@ class GetUserMediaImpl {
         settings.putInt("frameRate", info.fps);
         if (facingMode != null) settings.putString("facingMode", facingMode);
         trackParams.putMap("settings", settings.toMap());
+        videoSources.put(trackId, videoSource);
 
         return trackParams;
     }

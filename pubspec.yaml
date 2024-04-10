@@ -7,21 +7,21 @@ environment:
   flutter: '>=1.22.0'
 
 dependencies:
-  collection: ^1.17.0
+  collection: ^1.18.0
   dart_webrtc: ^1.4.0
   flutter:
     sdk: flutter
   path_provider: ^2.0.2
   web: ^0.5.1
   webrtc_interface: ^1.2.0
-  equatable: ^2.0.3
-  rxdart: ^0.27.3
+  equatable: ^2.0.5
+  rxdart: ^0.27.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   import_sorter: ^4.6.0
-  lints: ^2.0.0
+  lints: ^3.0.0
   pedantic: ^1.11.1
   test: any
 

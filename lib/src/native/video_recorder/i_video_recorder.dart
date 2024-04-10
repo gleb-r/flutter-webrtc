@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart';
 
 import '../../../flutter_webrtc.dart';
 
