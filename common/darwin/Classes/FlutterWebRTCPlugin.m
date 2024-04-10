@@ -78,12 +78,10 @@ NSArray<RTC_OBJC_TYPE(RTCVideoCodecInfo) *>* motifyH264ProfileLevelId(
 }
 @end
 
-void postEvent(FlutterEventSink sink, id _Nullable event) {
-  if (sink) {
+void postEvent(FlutterEventSink _Nonnull sink, id _Nullable event) {
     dispatch_async(dispatch_get_main_queue(), ^{
       sink(event);
     });
-  }
 }
 
 @implementation FlutterWebRTCPlugin {
@@ -942,6 +940,10 @@ MotionDetection* motionDetection;
     NSNumber* enable = argsMap[@"enable"];
     _speakerOn = enable.boolValue;
     [AudioUtils setSpeakerphoneOn:_speakerOn];
+    result(nil);
+  }
+  else if ([@"ensureAudioSession" isEqualToString:call.method]) {
+    [self ensureAudioSession];
     result(nil);
   }
   else if ([@"enableSpeakerphoneButPreferBluetooth" isEqualToString:call.method]) {
