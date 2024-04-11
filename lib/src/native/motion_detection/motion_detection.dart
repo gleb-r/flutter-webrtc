@@ -45,6 +45,5 @@ class MotionDetection {
     final disableRequest = DetectionRequest(false, 2);
     WebRTC.invokeMethod('motionDetection', disableRequest.toMap());
     _subscription?.cancel();
-    _detectionSubject.close();
   }
 }
