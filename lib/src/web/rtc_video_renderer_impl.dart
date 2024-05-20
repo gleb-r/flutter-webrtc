@@ -60,6 +60,10 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
 
   bool _muted = false;
 
+  final _isAttachedCompleter = Completer<void>();
+
+  Future<void> get isAttached => _isAttachedCompleter.future;
+
   set objectFit(String fit) {
     if (_objectFit == fit) return;
     _objectFit = fit;
@@ -150,6 +154,7 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
     }
 
     value = value.copyWith(renderVideo: renderVideo);
+    _isAttachedCompleter.complete();
   }
 
   Future<void> setSrcObject({MediaStream? stream, String? trackId}) async {
