@@ -15,6 +15,9 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
   bool _disposed = false;
   MediaStream? _srcObject;
   StreamSubscription<dynamic>? _eventSubscription;
+  final _isAttachedCompleter = Completer<void>();
+
+  Future<void> get isAttached => _isAttachedCompleter.future;
 
   @override
   Future<void> initialize() async {
@@ -61,6 +64,9 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
       value = (stream == null)
           ? RTCVideoValue.empty
           : value.copyWith(renderVideo: renderVideo);
+      if (stream != null) {
+        _isAttachedCompleter.complete();
+      }
     }).catchError((e) {
       print('Got exception for RTCVideoRenderer::setSrcObject: ${e.message}');
     }, test: (e) => e is PlatformException);
