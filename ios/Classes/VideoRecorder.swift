@@ -433,7 +433,7 @@ extension RTCI420BufferProtocol {
             dstV: UnsafeMutablePointer(mutating:buffer.dataV),
             dstStrideV: buffer.strideV,
             width: self.width,
-            width: self.height,
+            height: self.height,
             mode: rotation)
         return buffer
     }
@@ -463,7 +463,7 @@ extension CVPixelBuffer {
                               dstUV: dstUV,
                               dstStrideUV: Int32(dstUYStride),
                               width: i420Buf.width,
-                              width: i420Buf.height)
+                              height: i420Buf.height)
         } else {
             let dst = CVPixelBufferGetBaseAddress(self)
             let bytesPerRow = CVPixelBufferGetBytesPerRow(self)
