@@ -64,7 +64,7 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
       value = (stream == null)
           ? RTCVideoValue.empty
           : value.copyWith(renderVideo: renderVideo);
-      if (stream != null) {
+      if (stream != null && !_isAttachedCompleter.isCompleted) {
         _isAttachedCompleter.complete();
       }
     }).catchError((e) {

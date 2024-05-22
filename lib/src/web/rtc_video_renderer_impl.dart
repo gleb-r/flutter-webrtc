@@ -154,7 +154,9 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue>
     }
 
     value = value.copyWith(renderVideo: renderVideo);
-    _isAttachedCompleter.complete();
+    if (!_isAttachedCompleter.isCompleted) {
+      _isAttachedCompleter.complete();
+    }
   }
 
   Future<void> setSrcObject({MediaStream? stream, String? trackId}) async {
