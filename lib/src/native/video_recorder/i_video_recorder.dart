@@ -10,7 +10,9 @@ abstract class IVideoRecorder {
     required bool enableAudio,
   });
 
-  Future<RTCRecordResult> stop();
+  Future<void> stop();
+
+  Stream<dynamic> eventStream;
 
   RTCDetectedFrames? detectionOnVideo;
 }

@@ -7,6 +7,7 @@
 
 import Foundation
 import WebRTC
+import Flutter
 
 public class MotionDetection: NSObject, RTCVideoRenderer {
     

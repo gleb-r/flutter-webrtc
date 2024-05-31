@@ -52,7 +52,6 @@ class VideoRecorder(
     fun start() {
         videoFile.parentFile?.mkdirs()
         Log.d("TAG", "Start recording, file: ${videoFile.absolutePath}")
-
         videoTrack.addSink(videoFileRenderer)
         audioInterceptor?.attachCallback(id, videoFileRenderer)
         motionDetection.addListener(this)

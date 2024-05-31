@@ -33,7 +33,7 @@ class MotionDetection {
         .receiveBroadcastStream()
         .map((event) => DetectionFrame.fromMap(event))
         .listen((detection) {
-      if (!isPaused) {
+      if (!isPaused && !_detectionSubject.isClosed) {
         _detectionSubject.add(detection);
       }
     });
@@ -45,5 +45,6 @@ class MotionDetection {
     final disableRequest = DetectionRequest(false, 2);
     WebRTC.invokeMethod('motionDetection', disableRequest.toMap());
     _subscription?.cancel();
+    _detectionSubject.close();
   }
 }
