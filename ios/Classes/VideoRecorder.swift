@@ -37,6 +37,7 @@ public class VideoRecorder:NSObject {
     private var enableAudio = false
     private var dirPath: String?
     private var shouldStop = false
+    private var detectionData: DetectionData?
     
     private static let TIME_SCALE: Int32 = 600
  
@@ -67,7 +68,7 @@ public class VideoRecorder:NSObject {
                                   dirPath:String,
                                   enableAudio: Bool,
                                   result: FlutterResult?) {
-
+        
         log.d("Start capture called")
         guard state == .idle else {
             result?(false)
@@ -84,9 +85,10 @@ public class VideoRecorder:NSObject {
         do {
             self.mediaWriter = try AVAssetWriter.init(outputURL: videoPath, fileType: AVFileType.mp4)
         } catch {
-            result?(FlutterError(code: "failed to create writer",
-                                 message: error.localizedDescription,
-                          details: nil))
+            self.sendError( FlutterError(code: "failed to create writer",
+                                         message: error.localizedDescription,
+                                         details: nil))
+            self.disposeRecording()
             return
         }
         videoTrack.add(self)
@@ -107,71 +109,69 @@ public class VideoRecorder:NSObject {
             disposeRecording()
             // TODO: send error through event channel
             result(FlutterError(code: "Stop error, wrong state",
-                                       message: "state : \(state)",
-                                       details: nil))
+                                message: "state : \(state)",
+                                details: nil))
             return
         }
         log.d("Stop rec inner")
         state = .stop
         guard let videoUrl = self.videoPathUrl, let recordId = self.recordId else {
             log.e("Can't stop, Video path or recordId is nil")
-            // TODO: send error through event channel
-            result( FlutterError(code: "Stop error",
-                                 message: "Video path is nil",
-                                 details: nil))
+            sendError(FlutterError(code: "Stop error",
+                                   message: "Video path is nil",
+                                   details: nil))
+            disposeRecording()
+            return
+        }
+        guard let mediaWriter = self.mediaWriter else {
+            log.e("Can't stop, mediaWriter is nil")
+            sendError(FlutterError(code: "Stop error",
+                                   message: "mediaWriter is nil",
+                                   details: nil))
+            disposeRecording()
             return
         }
         guard videoWriterInput?.isReadyForMoreMediaData == true else {
             log.e("Can't stop, writer is not ready for more data")
-            // TODO: throw event channel
-            // TODO: dispose
-            result(
-                FlutterError(code: "Stop error",
-                             message: "writer is not ready for more data",
-                             details: nil)
-            )
+            sendError(FlutterError(code: "Stop error",
+                                   message: "writer is not ready for more data",
+                                   details: nil))
+            disposeRecording()
             return
         }
-        DispatchQueue.global().async { [weak self] in
+        self.videoTrack?.remove(self)
+        self.motionDetection.removeLister()
+        Task(priority: .background) { [weak self] in
             guard let self = self else { return }
-            self.videoTrack?.remove(self)
-            self.motionDetection.removeLister()
             self.videoWriterInput?.markAsFinished()
             self.audioWriterInput?.markAsFinished()
-            var writerError = false
-            self.mediaWriter?.finishWriting { [weak self] in
-                guard let self = self, let writer = self.mediaWriter else { return }
-                if writer.status == .failed {
-                    writerError = true
-                    log.e("Video writing failed:\(writer.error?.localizedDescription ?? "")")
-                    // TODO: through event channel
-                    // TODO: dispose anyway
-                    result(FlutterError(code: "Stop error",
-                                        message: "writer status is failed",
-                                        details: nil))
-                } else {
-                    log.d("Video writing fished with:\(writer.status.rawValue)")
-                }
-            }
-            
             let durationMs: Int
             if let firstFrameTime = self.firstFrameTime {
                 durationMs = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
             } else { durationMs = 0 }
+            await mediaWriter.finishWriting()
+            guard mediaWriter.status != .failed else {
+                log.e("Video writing failed:\(mediaWriter.error?.localizedDescription ?? "")")
+                sendError(FlutterError(code: "Stop error",
+                                       message: "writer status is failed",
+                                       details: nil))
+                disposeRecording()
+                return
+            }
+            log.d("Video writing fished with:\(writer.status.rawValue)")
             let recResult = RecordingResult(
                 recordId: recordId,
                 videoPath: videoUrl.path,
                 durationMs: durationMs,
                 frameInterval: self.motionDetection.frameIntervalMs,
-                rotationDegree: self.rotation.rawValue)
-            
-            if !writerError {
-                self.log.d("Send rec result")
-                sendEvent(event: RecordEvent(
-                    type: .result,
-                    data: recResult.toJson())
-                )
-            }
+                rotationDegree: self.rotation.rawValue,
+                detectionData: self.detectionData
+            )
+            self.log.d("Send rec result")
+            sendEvent(event: RecordEvent(
+                type: .result,
+                data: recResult.toJson())
+            )
             self.disposeRecording()
         }
     }
@@ -182,15 +182,7 @@ public class VideoRecorder:NSObject {
         motionDetection.removeLister()
         videoWriterInput?.markAsFinished()
         audioWriterInput?.markAsFinished()
-        mediaWriter?.finishWriting { [weak self] in
-            guard let self = self, let writer = self.mediaWriter else { return }
-            if writer.status == .failed {
-                // TODO: send by event channel
-                log.e("Video writing failed:\(writer.error?.localizedDescription ?? "")")
-            } else {
-                log.d("Video writing fished with:\(writer.status.rawValue)")
-            }
-        }
+        mediaWriter?.finishWriting()
         disposeRecording()
     }
     
@@ -243,6 +235,7 @@ public class VideoRecorder:NSObject {
         self.dirPath = nil
         self.state = .idle
         self.shouldStop = false
+        self.detectionData = nil
     }
     
     public func setSize(_ size: CGSize) {
@@ -413,15 +406,15 @@ extension VideoRecorder: MotionDetectionListener {
         }
         let frameIntervalMs = motionDetection.frameIntervalMs
         let frameIndex = Int((CACurrentMediaTime() - firstFrameTime) * 1000) / frameIntervalMs
-        let frame = DetectionWithTime(
-            squaresList: result.detectedList,
-            frameIndex: frameIndex,
-            aspect: result.aspectRatio,
-            xSqCount: result.xCount,
-            ySqCount: result.yCount)
-        DispatchQueue.main.async { [weak self] in
-            guard let eventSink = self?.eventSink else { return}
-            eventSink(frame.toMap())
+        if detectionData == nil {
+            detectionData = DetectionData.init(detectionResult: result, frameIndex: frameIndex)
+        } else {
+            do {
+            try detectionData?.addDetection(detection: result, frameIndex: frameIndex)
+            } catch {
+                log.e(error)
+                // TODO: send event channel
+            }
         }
     }
 }

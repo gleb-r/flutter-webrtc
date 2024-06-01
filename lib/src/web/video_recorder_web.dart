@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:dart_webrtc/dart_webrtc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/i_video_recorder.dart';
+import 'package:flutter_webrtc/src/native/video_recorder/record_state.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/rtc_record_result.dart';
 
 class VideoRecorder extends IVideoRecorder {
+  VideoRecorder({required super.onError, required super.onRecorded});
+
   MediaRecorder? _mediaRecorder;
   DateTime? _recordStartTime;
 
@@ -41,10 +44,20 @@ class VideoRecorder extends IVideoRecorder {
       videoPath: videoBlobUrl,
       frameRotation: 0,
       // TODO: get rotation
-      detectedFrames: detectionOnVideo,
+      detection: detectionOnVideo,
       frameInterval: 300,
       // TODO: get from detection
       durationMs: duration.inMilliseconds,
     );
   }
+
+  @override
+  Future<void> dispose() {
+    // TODO: implement dispose
+    throw UnimplementedError();
+  }
+
+  @override
+  // TODO: implement recordStateStream
+  Stream<RecordState> get recordStateStream => throw UnimplementedError();
 }

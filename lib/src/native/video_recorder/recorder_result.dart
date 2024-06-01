@@ -1,31 +1,19 @@
-class RecorderResult {
-  RecorderResult({
-    required this.recordId,
-    required this.videoPath,
-    required this.durationMs,
-    required this.frameInterval,
-    required this.frameRotation,
-  });
+// ignore_for_file: invalid_annotation_target
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  factory RecorderResult.fromMap(dynamic json) {
-    final map = Map<String, dynamic>.from(json as Map);
-    final String recordId = map['recordId'];
-    final String videoPath = map['video'];
-    final int durationMs = map['duration'];
-    final int frameInterval = map['interval'];
-    final int frameRotation = map['rotation'];
-    return RecorderResult(
-      recordId: recordId,
-      videoPath: videoPath,
-      durationMs: durationMs,
-      frameInterval: frameInterval,
-      frameRotation: frameRotation,
-    );
-  }
+part 'recorder_result.freezed.dart';
+part 'recorder_result.g.dart';
 
-  final String recordId;
-  final String videoPath;
-  final int durationMs;
-  final int frameInterval;
-  final int frameRotation;
-}
+@freezed
+class RecorderResult with _$RecorderResult {
+
+  const factory RecorderResult({
+    @JsonKey(name: 'recordId') required String recordId,
+    @JsonKey(name: 'video') required String videoPath,
+    @JsonKey(name: 'duration') required int durationMs,
+    @JsonKey(name:'interval' )required int frameInterval,
+    @JsonKey(name: 'rotation')required int frameRotation,
+  }) = _RecorderResult;
+
+  factory RecorderResult.fromJson(Map<String, dynamic> json) => _$RecorderResultFromJson(json);
+ }

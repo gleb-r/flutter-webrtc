@@ -16,6 +16,7 @@ struct RecordingResult{
     let durationMs:Int
     let frameInterval:Int
     let rotationDegree:Int
+    let detectionData: DetectionData?
     
     
     func toJson() -> Json {
@@ -25,6 +26,7 @@ struct RecordingResult{
             "rotation": NSNumber(value: rotationDegree),
             "duration": NSNumber(value: durationMs),
             "interval": NSNumber(value: frameInterval)
+            "detection": detectionData?.toMap()
         ]
     }
 }
@@ -49,7 +51,7 @@ enum RecordEventType:String {
     case stop
     case result
     case error
-    case detection
+    
     
     static func from(_ state: RecorderState) -> RecordEventType {
         switch state {

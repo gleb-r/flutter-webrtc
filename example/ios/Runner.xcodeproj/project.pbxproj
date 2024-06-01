@@ -24,7 +24,7 @@
 		F783111A2C066817001145C6 /* AudioUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = F78310EF2C066817001145C6 /* AudioUtils.m */; };
 		F783111B2C066817001145C6 /* DetectionRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78310F02C066817001145C6 /* DetectionRequest.swift */; };
 		F783111C2C066817001145C6 /* DetectionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78310F12C066817001145C6 /* DetectionResult.swift */; };
-		F783111D2C066817001145C6 /* DetectionWithTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78310F22C066817001145C6 /* DetectionWithTime.swift */; };
+		F783111D2C066817001145C6 /* DetectionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78310F22C066817001145C6 /* DetectionData.swift */; };
 		F783111E2C066817001145C6 /* FlutterRPScreenRecorder.m in Sources */ = {isa = PBXBuildFile; fileRef = F78310F42C066817001145C6 /* FlutterRPScreenRecorder.m */; };
 		F783111F2C066817001145C6 /* FlutterRTCAudioSink.mm in Sources */ = {isa = PBXBuildFile; fileRef = F78310F72C066817001145C6 /* FlutterRTCAudioSink.mm */; };
 		F78311202C066817001145C6 /* FlutterRTCDataChannel.m in Sources */ = {isa = PBXBuildFile; fileRef = F78310F92C066817001145C6 /* FlutterRTCDataChannel.m */; };
@@ -93,7 +93,7 @@
 		F78310EF2C066817001145C6 /* AudioUtils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioUtils.m; sourceTree = "<group>"; };
 		F78310F02C066817001145C6 /* DetectionRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DetectionRequest.swift; sourceTree = "<group>"; };
 		F78310F12C066817001145C6 /* DetectionResult.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DetectionResult.swift; sourceTree = "<group>"; };
-		F78310F22C066817001145C6 /* DetectionWithTime.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DetectionWithTime.swift; sourceTree = "<group>"; };
+		F78310F22C066817001145C6 /* DetectionData.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DetectionData.swift; sourceTree = "<group>"; };
 		F78310F32C066817001145C6 /* FlutterRPScreenRecorder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRPScreenRecorder.h; sourceTree = "<group>"; };
 		F78310F42C066817001145C6 /* FlutterRPScreenRecorder.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRPScreenRecorder.m; sourceTree = "<group>"; };
 		F78310F52C066817001145C6 /* FlutterRTCAudioSink-Interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "FlutterRTCAudioSink-Interface.h"; sourceTree = "<group>"; };
@@ -257,7 +257,7 @@
 				F78310EF2C066817001145C6 /* AudioUtils.m */,
 				F78310F02C066817001145C6 /* DetectionRequest.swift */,
 				F78310F12C066817001145C6 /* DetectionResult.swift */,
-				F78310F22C066817001145C6 /* DetectionWithTime.swift */,
+				F78310F22C066817001145C6 /* DetectionData.swift */,
 				F78310F32C066817001145C6 /* FlutterRPScreenRecorder.h */,
 				F78310F42C066817001145C6 /* FlutterRPScreenRecorder.m */,
 				F78310F52C066817001145C6 /* FlutterRTCAudioSink-Interface.h */,
@@ -465,7 +465,7 @@
 				F783111F2C066817001145C6 /* FlutterRTCAudioSink.mm in Sources */,
 				F78311222C066817001145C6 /* FlutterRTCFrameCapturer.m in Sources */,
 				F78311272C066817001145C6 /* FlutterRTCVideoRenderer.m in Sources */,
-				F783111D2C066817001145C6 /* DetectionWithTime.swift in Sources */,
+				F783111D2C066817001145C6 /* DetectionData.swift in Sources */,
 				F78311282C066817001145C6 /* FlutterWebRTCPlugin.m in Sources */,
 				F783111A2C066817001145C6 /* AudioUtils.m in Sources */,
 				978B8F6F1D3862AE00F588F7 /* AppDelegate.m in Sources */,
