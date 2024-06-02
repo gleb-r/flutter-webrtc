@@ -9,17 +9,18 @@ import com.cloudwebrtc.webrtc.detection.DetectionResult
 import com.cloudwebrtc.webrtc.detection.MotionDetection
 import com.cloudwebrtc.webrtc.record.AudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.record.FirstFrameListener
-import com.cloudwebrtc.webrtc.record.FrameCapturer
 import com.cloudwebrtc.webrtc.record.VideoFileRenderer
 import com.cloudwebrtc.webrtc.utils.EglUtils
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.util.PathUtils.getFilesDir
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import org.webrtc.VideoTrack
 import java.io.File
 import java.util.UUID
 import kotlin.random.Random
 
-class VideoRecorder(
+public class VideoRecorder(
     private val videoTrack: VideoTrack,
     private val dirPath: String,
     private val audioInterceptor: AudioSamplesInterceptor?,
@@ -27,7 +28,7 @@ class VideoRecorder(
     private val withAudio: Boolean,
     private val motionDetection: MotionDetection,
     private val applicationContext: Context,
-    private val onDetection: (DetectionWithIndex) -> Unit
+    private val onStateChange: (RecordState) -> Unit,
 
 ) : FirstFrameListener, MotionDetection.Listener {
     private val recordId by lazy {   UUID.randomUUID().toString() }
@@ -38,6 +39,8 @@ class VideoRecorder(
     private var firstFrameTime: Long? = null
     private var frameRotation = 0
     private val id by lazy { Random(10000).nextInt() }
+
+    private var detectionData: DetectionData? = null
 
     private val videoFileRenderer by lazy {
         VideoFileRenderer(
@@ -50,6 +53,7 @@ class VideoRecorder(
     }
 
     fun start() {
+        onStateChange(RecordState.starting)
         videoFile.parentFile?.mkdirs()
         Log.d("TAG", "Start recording, file: ${videoFile.absolutePath}")
         videoTrack.addSink(videoFileRenderer)
@@ -58,6 +62,7 @@ class VideoRecorder(
     }
 
     fun stop(): RecordingResult {
+        onStateChange(RecordState.stop)
         motionDetection.removeListener()
         audioInterceptor?.detachCallback(id)
         videoTrack.removeSink(videoFileRenderer)
@@ -68,6 +73,7 @@ class VideoRecorder(
         val duration = System.currentTimeMillis() - firstFrame
         Log.d("TAG", "Stop recording without content resolver")
         val values = ContentValues(3)
+        onStateChange(RecordState.idle)
 //        values.put(MediaStore.Video.Media.TITLE, videoFile.name)
 //        values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
 //        values.put(MediaStore.Video.Media.DATA, videoFile.absolutePath)
@@ -80,7 +86,8 @@ class VideoRecorder(
             videoPath = videoFile.absolutePath,
             durationMs = duration,
             frameIntervalMs = motionDetection.frameIntervalMs,
-            rotationDegree = frameRotation
+            rotationDegree = frameRotation,
+            detection = Json.encodeToJsonElement(detectionData)
         )
     }
 
@@ -88,14 +95,20 @@ class VideoRecorder(
         println("On first frame called, rotation: $frameRotation")
         firstFrameTime = System.currentTimeMillis()
         this.frameRotation = frameRotation
+        onStateChange(RecordState.recording)
     }
 
     override fun onDetect(detection: DetectionResult) {
         if (detection.detectedList.isEmpty()) return
         firstFrameTime?.let { time ->
             val frameIndex = (System.currentTimeMillis() - time) / motionDetection.frameIntervalMs
-            val frame = DetectionWithIndex(detection, frameIndex.toInt())
-            onDetection(frame)
+            val frameIndexStr = frameIndex.toString()
+            if (detectionData == null) {
+                detectionData = DetectionData(detection, frameIndexStr)
+            } else {
+                detectionData?.addFrame(frameIndexStr, detection)
+            }
+
         }
     }
 }

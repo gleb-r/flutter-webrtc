@@ -1,20 +1,16 @@
 package com.cloudwebrtc.webrtc.videoRecorder
 
-data class RecordingResult(
-    val recordId: String,
-    val videoPath: String,
-    val durationMs: Long,
-    val frameIntervalMs: Long,
-    val rotationDegree: Int
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
-) {
-    fun toMap(): Map<String, Any> {
-        return mapOf(
-            "recordId" to recordId,
-            "video" to videoPath,
-            "rotation" to rotationDegree,
-            "duration" to durationMs,
-            "interval" to frameIntervalMs
-        )
-    }
-}
+@Serializable
+data class RecordingResult(
+    @SerialName("recordId") val recordId: String,
+    @SerialName("video") val videoPath: String,
+    @SerialName("duration") val durationMs: Long,
+    @SerialName("interval") val frameIntervalMs: Long,
+    @SerialName("rotation") val rotationDegree: Int,
+    @SerialName("detection") val detection: JsonElement?
+)

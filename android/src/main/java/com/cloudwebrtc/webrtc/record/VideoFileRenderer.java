@@ -1,5 +1,6 @@
 package com.cloudwebrtc.webrtc.record;
 
+import android.annotation.SuppressLint;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaCodec;
@@ -295,7 +296,7 @@ public class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
 
     void startDirectAudio() {
         if (isRecording) return;
-        AudioRecord audioRecord = new AudioRecord(
+        @SuppressLint("MissingPermission") AudioRecord audioRecord = new AudioRecord(
                 AUDIO_SOURCE,
                 SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
