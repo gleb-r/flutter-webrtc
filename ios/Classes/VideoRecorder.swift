@@ -11,7 +11,6 @@ import Flutter
 import CoreVideo
 import AVFoundation
 import OSLog
-import flutter_webrtc
 
 
 public class VideoRecorder:NSObject {
@@ -73,10 +72,6 @@ public class VideoRecorder:NSObject {
         guard state == .idle else {
             result?(false)
             return
-        }
-        var connection: RTCPeerConnection?
-        connection?.onListen(withArguments: nil) { [weak self] res in
-            self?.log.d("Connection onListen, val \(res)")
         }
         result?(true)
         self.videoTrack = videoTrack
@@ -146,7 +141,7 @@ public class VideoRecorder:NSObject {
         self.motionDetection.removeLister()
         Task(priority: .background) { [weak self] in
             guard let self = self else { return }
-            await self.videoTrack?.remove(self)
+            self.videoTrack?.remove(self)
             self.videoWriterInput?.markAsFinished()
             self.audioWriterInput?.markAsFinished()
             let durationMs: Int
