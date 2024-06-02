@@ -143,10 +143,10 @@ public class VideoRecorder:NSObject {
             disposeRecording()
             return
         }
-        self.videoTrack?.remove(self)
         self.motionDetection.removeLister()
         Task(priority: .background) { [weak self] in
             guard let self = self else { return }
+            await self.videoTrack?.remove(self)
             self.videoWriterInput?.markAsFinished()
             self.audioWriterInput?.markAsFinished()
             let durationMs: Int
@@ -162,7 +162,8 @@ public class VideoRecorder:NSObject {
                 disposeRecording()
                 return
             }
-            log.d("Video writing fished with:\(mediaWriter.status.rawValue)")
+            let status = mediaWriter.status
+            log.d("Video writing fished with:\(status)")
             let recResult = RecordingResult(
                 recordId: recordId,
                 videoPath: videoUrl.path,
@@ -245,7 +246,10 @@ public class VideoRecorder:NSObject {
     public func setSize(_ size: CGSize) {
         if let frameSize = self.frameSize, frameSize != size {
             log.w("frame size changed prev: \(frameSize), new: \(size)")
-            // TODO: stop recording and start again
+            // TODO: send event to restart on orientation change
+            // TODO: ideally continue recording on camera orientation change
+            stopCapure(result: { _ in })
+            return
         }
         self.frameSize = size
     }
@@ -457,7 +461,6 @@ extension VideoRecorder: RTCVideoRenderer {
     public func renderFrame(_ frame: RTCVideoFrame?) {
         switch(state) {
         case  .idle , .initialazing, .stop: return
-            
         case .start: initialize()
         case .capturing: addFrame(frame: frame)
         }
