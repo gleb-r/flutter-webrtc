@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'record_event.freezed.dart';
@@ -9,6 +11,9 @@ class RecordEvent with _$RecordEvent {
     required RecordEventType type,
     Map<String, dynamic>? data,
   }) = _RecordEvent;
+
+  factory RecordEvent.fromMap(Map<Object?, Object?> map) =>
+      RecordEvent.fromJson(jsonDecode(jsonEncode(map)));
 
   factory RecordEvent.fromJson(Map<String, dynamic> json) =>
       _$RecordEventFromJson(json);
@@ -28,4 +33,3 @@ enum RecordEventType {
   @JsonValue('error')
   error,
 }
-

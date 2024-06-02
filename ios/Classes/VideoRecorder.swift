@@ -74,6 +74,10 @@ public class VideoRecorder:NSObject {
             result?(false)
             return
         }
+        var connection: RTCPeerConnection?
+        connection?.onListen(withArguments: nil) { [weak self] res in
+            self?.log.d("Connection onListen, val \(res)")
+        }
         result?(true)
         self.videoTrack = videoTrack
         self.audioTrack = audioTrack
@@ -158,7 +162,7 @@ public class VideoRecorder:NSObject {
                 disposeRecording()
                 return
             }
-            log.d("Video writing fished with:\(writer.status.rawValue)")
+            log.d("Video writing fished with:\(mediaWriter.status.rawValue)")
             let recResult = RecordingResult(
                 recordId: recordId,
                 videoPath: videoUrl.path,
@@ -182,7 +186,7 @@ public class VideoRecorder:NSObject {
         motionDetection.removeLister()
         videoWriterInput?.markAsFinished()
         audioWriterInput?.markAsFinished()
-        mediaWriter?.finishWriting()
+        await mediaWriter?.finishWriting()
         disposeRecording()
     }
     
@@ -410,10 +414,12 @@ extension VideoRecorder: MotionDetectionListener {
             detectionData = DetectionData.init(detectionResult: result, frameIndex: frameIndex)
         } else {
             do {
-            try detectionData?.addDetection(detection: result, frameIndex: frameIndex)
+                try detectionData?.addDetection(detection: result, frameIndex: frameIndex)
             } catch {
-                log.e(error)
-                // TODO: send event channel
+                log.e("\(error)")
+                sendError(FlutterError(code: "Add Detection error",
+                                       message: error.localizedDescription,
+                                       details: nil))
             }
         }
     }

@@ -16,6 +16,7 @@ dependencies:
   webrtc_interface: ^1.2.0
   equatable: ^2.0.5
   rxdart: ^0.27.7
+  async: ^2.11.0
   freezed_annotation: any
   json_annotation: ^4.9.0
 

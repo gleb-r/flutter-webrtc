@@ -21,7 +21,7 @@ RecordEvent _$RecordEventFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$RecordEvent {
   RecordEventType get type => throw _privateConstructorUsedError;
-  Map<String, dynamic>? get data => throw _privateConstructorUsedError;
+  Map<Object?, Object?>? get data => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -35,7 +35,7 @@ abstract class $RecordEventCopyWith<$Res> {
           RecordEvent value, $Res Function(RecordEvent) then) =
       _$RecordEventCopyWithImpl<$Res, RecordEvent>;
   @useResult
-  $Res call({RecordEventType type, Map<String, dynamic>? data});
+  $Res call({RecordEventType type, Map<Object?, Object?>? data});
 }
 
 /// @nodoc
@@ -62,7 +62,7 @@ class _$RecordEventCopyWithImpl<$Res, $Val extends RecordEvent>
       data: freezed == data
           ? _value.data
           : data // ignore: cast_nullable_to_non_nullable
-              as Map<String, dynamic>?,
+              as Map<Object?, Object?>?,
     ) as $Val);
   }
 }
@@ -75,7 +75,7 @@ abstract class _$$RecordEventImplCopyWith<$Res>
       __$$RecordEventImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({RecordEventType type, Map<String, dynamic>? data});
+  $Res call({RecordEventType type, Map<Object?, Object?>? data});
 }
 
 /// @nodoc
@@ -100,7 +100,7 @@ class __$$RecordEventImplCopyWithImpl<$Res>
       data: freezed == data
           ? _value._data
           : data // ignore: cast_nullable_to_non_nullable
-              as Map<String, dynamic>?,
+              as Map<Object?, Object?>?,
     ));
   }
 }
@@ -109,7 +109,7 @@ class __$$RecordEventImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$RecordEventImpl implements _RecordEvent {
   const _$RecordEventImpl(
-      {required this.type, final Map<String, dynamic>? data})
+      {required this.type, final Map<Object?, Object?>? data})
       : _data = data;
 
   factory _$RecordEventImpl.fromJson(Map<String, dynamic> json) =>
@@ -117,9 +117,9 @@ class _$RecordEventImpl implements _RecordEvent {
 
   @override
   final RecordEventType type;
-  final Map<String, dynamic>? _data;
+  final Map<Object?, Object?>? _data;
   @override
-  Map<String, dynamic>? get data {
+  Map<Object?, Object?>? get data {
     final value = _data;
     if (value == null) return null;
     if (_data is EqualUnmodifiableMapView) return _data;
@@ -163,7 +163,7 @@ class _$RecordEventImpl implements _RecordEvent {
 abstract class _RecordEvent implements RecordEvent {
   const factory _RecordEvent(
       {required final RecordEventType type,
-      final Map<String, dynamic>? data}) = _$RecordEventImpl;
+      final Map<Object?, Object?>? data}) = _$RecordEventImpl;
 
   factory _RecordEvent.fromJson(Map<String, dynamic> json) =
       _$RecordEventImpl.fromJson;
@@ -171,7 +171,7 @@ abstract class _RecordEvent implements RecordEvent {
   @override
   RecordEventType get type;
   @override
-  Map<String, dynamic>? get data;
+  Map<Object?, Object?>? get data;
   @override
   @JsonKey(ignore: true)
   _$$RecordEventImplCopyWith<_$RecordEventImpl> get copyWith =>

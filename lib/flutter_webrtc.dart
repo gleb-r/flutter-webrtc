@@ -18,6 +18,7 @@ export 'src/native/rtc_video_view_impl.dart'
     if (dart.library.html) 'src/web/rtc_video_view_impl.dart';
 export 'src/native/utils.dart' if (dart.library.html) 'src/web/utils.dart';
 export 'src/native/video_recorder/rtc_record_result.dart';
+export 'src/native/video_recorder/recording_state.dart';
 export 'src/native/video_recorder/video_recorder_mobile.dart'
     if (dart.library.html) 'src/web/video_recorder_web.dart';
 export 'src/native/adapter_type.dart';

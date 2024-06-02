@@ -5,7 +5,10 @@
 //  Created by MacBook 16 on 17.06.2022.
 //
 
+
 import Foundation
+import Flutter
+
 
 struct DetectionData {
     var frames: [String:[Square]]
@@ -20,14 +23,15 @@ struct DetectionData {
         self.ySqCount = detectionResult.yCount
     }
     
-    mutating func addDetection(detection: DetectionResult, frameIndex: Int) throws {
+    mutating func addDetection(detection: DetectionResult, frameIndex: Int) throws  {
         guard xSqCount == detection.xCount,
               ySqCount == detection.yCount,
               aspect == detection.aspectRatio else {
-            throw NSException(name: "VideoRecord error",
-                              reason: "DetectionData: aspect or xSqCount or ySqCount mismatch")
+            throw NSError(domain: "DetectionData",
+                          code: 1,
+                          userInfo: ["message": "Detection data is not compatible"])
         }
-        frames["\(detection.frameIndex)"] = detection.detectedList
+        frames["\(frameIndex)"] = detection.detectedList
     }
     
     
@@ -42,4 +46,3 @@ struct DetectionData {
         ]
     }
 }
-

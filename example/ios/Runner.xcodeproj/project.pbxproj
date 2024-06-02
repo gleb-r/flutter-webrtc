@@ -99,7 +99,7 @@
 		F78310F52C066817001145C6 /* FlutterRTCAudioSink-Interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "FlutterRTCAudioSink-Interface.h"; sourceTree = "<group>"; };
 		F78310F62C066817001145C6 /* FlutterRTCAudioSink.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCAudioSink.h; sourceTree = "<group>"; };
 		F78310F72C066817001145C6 /* FlutterRTCAudioSink.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FlutterRTCAudioSink.mm; sourceTree = "<group>"; };
-		F78310F82C066817001145C6 /* FlutterRTCDataChannel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCDataChannel.h; sourceTree = "<group>"; };
+		F78310F82C066817001145C6 /* FlutterRTCDataChannel.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.objc; fileEncoding = 4; path = FlutterRTCDataChannel.h; sourceTree = "<group>"; };
 		F78310F92C066817001145C6 /* FlutterRTCDataChannel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCDataChannel.m; sourceTree = "<group>"; };
 		F78310FA2C066817001145C6 /* FlutterRTCDesktopCapturer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCDesktopCapturer.h; sourceTree = "<group>"; };
 		F78310FB2C066817001145C6 /* FlutterRTCDesktopCapturer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCDesktopCapturer.m; sourceTree = "<group>"; };
@@ -116,7 +116,7 @@
 		F78311062C066817001145C6 /* FlutterRTCVideoRenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCVideoRenderer.h; sourceTree = "<group>"; };
 		F78311072C066817001145C6 /* FlutterRTCVideoRenderer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCVideoRenderer.m; sourceTree = "<group>"; };
 		F78311082C066817001145C6 /* FlutterWebRTCPlugin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterWebRTCPlugin.h; sourceTree = "<group>"; };
-		F78311092C066817001145C6 /* FlutterWebRTCPlugin.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterWebRTCPlugin.m; sourceTree = "<group>"; };
+		F78311092C066817001145C6 /* FlutterWebRTCPlugin.m */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.objc; fileEncoding = 4; path = FlutterWebRTCPlugin.m; sourceTree = "<group>"; };
 		F783110A2C066817001145C6 /* media_stream_interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = media_stream_interface.h; sourceTree = "<group>"; };
 		F783110B2C066817001145C6 /* MotionDetection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MotionDetection.swift; sourceTree = "<group>"; };
 		F783110C2C066817001145C6 /* PixelDection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PixelDection.swift; sourceTree = "<group>"; };

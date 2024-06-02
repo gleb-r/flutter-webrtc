@@ -1,6 +1,6 @@
 import 'package:flutter_webrtc/src/native/video_recorder/record_event.dart';
 
-enum RecordState {
+enum RecordingState {
   idle,
   starting,
   recording,
@@ -8,18 +8,18 @@ enum RecordState {
   ;
 
   bool get isRecording =>
-      this == RecordState.recording || this == RecordState.starting;
+      this == RecordingState.recording || this == RecordingState.starting;
 
-  static RecordState? fromEvent(RecordEvent event) {
+  static RecordingState? fromEvent(RecordEvent event) {
     switch (event.type) {
       case RecordEventType.idle:
-        return RecordState.idle;
+        return RecordingState.idle;
       case RecordEventType.starting:
-        return RecordState.starting;
+        return RecordingState.starting;
       case RecordEventType.recording:
-        return RecordState.recording;
+        return RecordingState.recording;
       case RecordEventType.stop:
-        return RecordState.stop;
+        return RecordingState.stop;
       default:
         return null;
     }

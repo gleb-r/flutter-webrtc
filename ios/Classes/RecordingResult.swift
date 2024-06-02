@@ -8,7 +8,7 @@
 import Foundation
 import Flutter
 
-typealias  Json = [String:Any]
+typealias  Json = [String:Any?]
 
 struct RecordingResult{
     let recordId: String
@@ -19,13 +19,13 @@ struct RecordingResult{
     let detectionData: DetectionData?
     
     
-    func toJson() -> Json {
+    func toJson() -> [String: Any?] {
         return [
             "recordId": recordId,
             "video": videoPath,
             "rotation": NSNumber(value: rotationDegree),
             "duration": NSNumber(value: durationMs),
-            "interval": NSNumber(value: frameInterval)
+            "interval": NSNumber(value: frameInterval),
             "detection": detectionData?.toMap()
         ]
     }

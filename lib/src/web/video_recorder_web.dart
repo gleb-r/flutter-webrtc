@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dart_webrtc/dart_webrtc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/i_video_recorder.dart';
-import 'package:flutter_webrtc/src/native/video_recorder/record_state.dart';
+import 'package:flutter_webrtc/src/native/video_recorder/recording_state.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/rtc_record_result.dart';
 
 class VideoRecorder extends IVideoRecorder {
@@ -59,5 +59,9 @@ class VideoRecorder extends IVideoRecorder {
 
   @override
   // TODO: implement recordStateStream
-  Stream<RecordState> get recordStateStream => throw UnimplementedError();
+  Stream<RecordingState> get recordStateStream => throw UnimplementedError();
+
+  @override
+  // TODO: implement currentState
+  RecordingState get currentState => throw UnimplementedError();
 }
