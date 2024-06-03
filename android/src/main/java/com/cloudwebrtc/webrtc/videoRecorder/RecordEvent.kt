@@ -1,10 +1,13 @@
 package com.cloudwebrtc.webrtc.videoRecorder
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-
-@Serializable
 public data class RecordEvent (
     val type: RecordEventType,
-    val data: JsonElement?
-)
+    val data: Map<String, Any?>?
+) {
+    fun toMap(): Map<String, Any?> {
+        return mapOf(
+            "type" to type.name,
+            "data" to data
+        )
+    }
+}

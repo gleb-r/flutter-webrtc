@@ -169,6 +169,7 @@ public class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
             mediaMuxer.stop();
             mediaMuxer.release();
             renderThread.quit();
+            Log.d(TAG, "release done");
         });
     }
 
@@ -279,7 +280,13 @@ public class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
                         break;
                     }
                 } catch (Exception e) {
-                    Log.wtf(TAG, e);
+                    if (e instanceof IllegalStateException
+                            && e.getMessage() != null
+                            && e.getMessage().contains("Muxer has been released!")) {
+                        break;
+                    } else {
+                        Log.wtf(TAG, e);
+                    }
                     break;
                 }
             }
@@ -368,7 +375,7 @@ public class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
                 byte[] data = audioSamples.getData();
                 buffer.put(data);
                 audioEncoder.queueInputBuffer(bufferIndex, 0, data.length, presTime, 0);
-                presTime += data.length * 125 / 12; // 1000000 microseconds / 48000hz / 2 bytes
+                presTime += data.length * 125L / 12; // 1000000 microseconds / 48000hz / 2 bytes
             }
             drainAudio();
         });

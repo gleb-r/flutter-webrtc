@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/record_error.dart';
@@ -32,7 +33,7 @@ class VideoRecorder extends IVideoRecorder {
 
   @override
   Future<void> stop() async {
-     await WebRTC.invokeMethod('stopRecordVideo');
+    await WebRTC.invokeMethod('stopRecordVideo');
   }
 
   late final _eventChannel = EventChannel('FlutterWebRTC/detectionOnVideo');
@@ -46,31 +47,30 @@ class VideoRecorder extends IVideoRecorder {
     }
     await _eventsSubscription?.cancel();
     await _stateSubject.close();
-
   }
 
   void _listenEventChannel() {
     _eventsSubscription = _eventChannel
         .receiveBroadcastStream()
         .doOnData((event) => print('event: $event'))
-        .map((json) => RecordEvent.fromMap(json))
+        .map((event) => RecordEvent.fromMap(event))
         .listen((event) {
-          switch (event.type) {
-            case RecordEventType.idle:
-              _stateSubject.add(RecordingState.idle);
-            case RecordEventType.starting:
-              _stateSubject.add(RecordingState.starting);
-            case RecordEventType.recording:
-              _stateSubject.add(RecordingState.recording);
-            case RecordEventType.stop:
-              _stateSubject.add(RecordingState.stop);
-            case RecordEventType.result:
-              final result = RTCRecordResult.fromJson(event.data!);
-              onRecorded(result);
-            case RecordEventType.error:
-              final error = RecordError.fromJson(event.data!);
-              onError(error);
-          }
+      switch (event.type) {
+        case RecordEventType.idle:
+          _stateSubject.add(RecordingState.idle);
+        case RecordEventType.starting:
+          _stateSubject.add(RecordingState.starting);
+        case RecordEventType.recording:
+          _stateSubject.add(RecordingState.recording);
+        case RecordEventType.stop:
+          _stateSubject.add(RecordingState.stop);
+        case RecordEventType.result:
+          final result = RTCRecordResult.fromJson(event.data!);
+          onRecorded(result);
+        case RecordEventType.error:
+          final error = RecordError.fromJson(event.data!);
+          onError(error);
+      }
     });
   }
 

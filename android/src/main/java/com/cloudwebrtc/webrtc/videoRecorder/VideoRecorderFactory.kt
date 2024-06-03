@@ -12,8 +12,6 @@ import io.flutter.plugin.common.EventChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 import org.webrtc.VideoTrack
 import org.webrtc.audio.JavaAudioDeviceModule
 
@@ -115,7 +113,7 @@ class VideoRecorderFactory(
                 sendEvent(
                     RecordEvent(
                         RecordEventType.result,
-                        Json.encodeToJsonElement(result)
+                        result.toMap()
                     )
                 )
                 launch(Dispatchers.Main) {
@@ -138,16 +136,15 @@ class VideoRecorderFactory(
         sendEvent(
             RecordEvent(
                 RecordEventType.error,
-                Json.encodeToJsonElement(error)
+                error.toMap()
             )
         )
     }
 
     private fun sendEvent(recordEvent: RecordEvent) {
         Handler(Looper.getMainLooper()).post {
-            val eventJson = Json.encodeToJsonElement(recordEvent)
-            eventSink?.success(eventJson)
-            Log.d("RecodingFactory", "sendEvent: $recordEvent")
+            eventSink?.success(recordEvent.toMap())
+            Log.i("RecodingFactory", "sendEvent: $recordEvent")
         }
     }
 

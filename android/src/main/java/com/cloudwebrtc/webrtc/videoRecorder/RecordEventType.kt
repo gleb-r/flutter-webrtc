@@ -1,7 +1,8 @@
 package com.cloudwebrtc.webrtc.videoRecorder
+
 public enum class RecordEventType {
     idle,
-    stating,
+    starting,
     recording,
     stop,
     error,
@@ -9,10 +10,10 @@ public enum class RecordEventType {
 
     companion object {
       public fun fromState(state: RecordState): RecordEventType = when (state) {
-          RecordState.idle -> RecordEventType.idle
-          RecordState.starting -> RecordEventType.stating
-          RecordState.recording -> RecordEventType.recording
-          RecordState.stop -> RecordEventType.stop
+          RecordState.idle -> idle
+          RecordState.starting -> starting
+          RecordState.recording -> recording
+          RecordState.stop -> stop
       }
     }
 }

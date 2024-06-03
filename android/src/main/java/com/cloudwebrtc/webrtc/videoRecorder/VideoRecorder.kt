@@ -13,8 +13,6 @@ import com.cloudwebrtc.webrtc.record.VideoFileRenderer
 import com.cloudwebrtc.webrtc.utils.EglUtils
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.util.PathUtils.getFilesDir
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 import org.webrtc.VideoTrack
 import java.io.File
 import java.util.UUID
@@ -87,7 +85,7 @@ public class VideoRecorder(
             durationMs = duration,
             frameIntervalMs = motionDetection.frameIntervalMs,
             rotationDegree = frameRotation,
-            detection = Json.encodeToJsonElement(detectionData)
+            detection = detectionData?.toMap()
         )
     }
 

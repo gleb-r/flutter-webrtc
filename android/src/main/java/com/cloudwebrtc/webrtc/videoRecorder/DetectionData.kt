@@ -1,16 +1,22 @@
 package com.cloudwebrtc.webrtc.videoRecorder
 
 import com.cloudwebrtc.webrtc.detection.DetectionResult
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 
-@Serializable
-data class DetectionData(
-    @SerialName("f") val frames: MutableMap<String, List<String>>,
-    @SerialName("a") val aspect: Double,
-    @SerialName("x") val xCount: Int,
-    @SerialName("y") val yCount: Int,
+public data class DetectionData(
+    val frames: MutableMap<String, List<String>>,
+    val aspect: Double,
+    val xCount: Int,
+    val yCount: Int,
 ) {
+
+    fun toMap(): Map<String, Any> {
+        return mapOf(
+            "f" to frames,
+            "a" to aspect,
+            "x" to xCount,
+            "y" to yCount,
+        )
+    }
 
 
     constructor(detectionResult: DetectionResult, frameIndex: String) : this(
