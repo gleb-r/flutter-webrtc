@@ -430,6 +430,7 @@ MotionDetection* motionDetection;
         } else {
             if (motionDetection == nil) {
                 motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
+                [motionDetection setVideoTrack:videoTrack];
             }
             if (videoRecorder == nil) {
                 videoRecorder = [[VideoRecorder alloc] initWithBinaryMessenger:_messenger
@@ -488,7 +489,8 @@ MotionDetection* motionDetection;
             }
             motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
         }
-        [motionDetection setDetectionWithVideoTrack:videoTrack request:request];
+        [motionDetection setVideoTrack:videoTrack];
+        [motionDetection setDetection:request];
         result(nil);
 
    } else if ([@"setLocalDescription" isEqualToString:call.method]) {
@@ -641,6 +643,9 @@ MotionDetection* motionDetection;
     if (stream) {
       for (RTCVideoTrack* track in stream.videoTracks) {
         [_localTracks removeObjectForKey:track.trackId];
+        if (motionDetection != nil) {
+            [motionDetection removeVideoTrack:track.trackId];
+        }
         RTCVideoTrack* videoTrack = (RTCVideoTrack*)track;
         CapturerStopHandler stopHandler = self.videoCapturerStopHandlers[videoTrack.trackId];
         if (stopHandler) {
@@ -750,6 +755,9 @@ MotionDetection* motionDetection;
           }
         }
       }
+    }
+    if (motionDetection != nil) {
+        [motionDetection removeVideoTrack:trackId];
     }
     [_localTracks removeObjectForKey:trackId];
     if (audioTrack) {
@@ -1483,6 +1491,9 @@ MotionDetection* motionDetection;
 }
 
 - (void)dealloc {
+  if (motionDetection != nil) {
+    [motionDetection dispose];
+  }
   [_localTracks removeAllObjects];
   _localTracks = nil;
   [_localStreams removeAllObjects];
@@ -1551,6 +1562,9 @@ MotionDetection* motionDetection;
         @"readyState" : @"live",
         @"remote" : @(NO)
       }];
+      if (motionDetection != nil) {
+        [motionDetection addVideoTrack:(RTCVideoTrack*)track];
+      }
     }
 
     result(@{@"audioTracks" : audioTracks, @"videoTracks" : videoTracks});

@@ -710,6 +710,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                 }
                 if (motionDetection == null) {
                     motionDetection = new MotionDetection(messenger);
+                    motionDetection.setVideoTrack(videoTrack);
                 }
                 if (videoRecorderFactory == null) {
                     videoRecorderFactory = new VideoRecorderFactory(

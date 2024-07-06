@@ -26,6 +26,9 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     }
 
     fun setVideoTrack(videoTrack: VideoTrack) {
+        if (this.videoTrack != null) {
+            return
+        }
         this.videoTrack = videoTrack
         if (isActive) {
             startDetection(videoTrack)
@@ -124,6 +127,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
         }
         videoTrack = null
         eventSink = null
+        eventChannel.setStreamHandler(null)
 
     }
 

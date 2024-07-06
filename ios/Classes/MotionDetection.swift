@@ -19,9 +19,10 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     private var videoTrack: RTCVideoTrack?
     private var previosTime = CACurrentMediaTime()
     private var detectionInterval: Double = 0.3
-    private var started = false
+
     private var listener: MotionDetectionListener?
     
+    private var active = false
     @objc public init(binaryMessenger: FlutterBinaryMessenger) {
         eventChannel = FlutterEventChannel(
             name: "FlutterWebRTC/motionDetection",
@@ -34,37 +35,53 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
        Int(detectionInterval * 1000)
     }
     
+    @objc public func setVideoTrack(videoTrack: RTCVideoTrack) {
+        guard self.videoTrack != nil else { return }
+        self.videoTrack = videoTrack
+        if active {
+            start(videoTrack: videoTrack)
+        }
+    }
     
-    @objc public func setDetection(videoTrack: RTCVideoTrack,
-                                   request: DetectionRequest
+    @objc public func removeVideoTrack(trackId:String) {
+        guard let videoTrack = self.videoTrack, videoTrack.trackId == trackId else { return }
+        stop()
+        self.videoTrack = nil
+    }
+    
+    
+    @objc public func setDetection(request: DetectionRequest
     ) {
-        if !request.enabled {
-            stop();
-        } else if !started {
+        self.detectionLevel = request.level
+        guard self.active != request.enabled else { return }
+        self.active = request.enabled
+        if active {
+            guard let videoTrack = self.videoTrack else { return }
             start(videoTrack: videoTrack)
         } else {
-            setDetectionParams(request: request)
+            stop()
         }
     }
     
     
     private func start(videoTrack: RTCVideoTrack) {
-        self.started = true
         videoTrack.add(self)
-        self.videoTrack = videoTrack
     }
     
     @objc public func stop() {
-        guard started else { return }
         videoTrack?.remove(self)
-        self.videoTrack = nil
-        self.started = false
         self.pixelDetection.resetPrevious()
     }
-    
-    @objc public func setDetectionParams(request: DetectionRequest) {
-        self.detectionLevel = request.level
+
+    @objc public func dispose() {
+        if active {
+            stop()
+        }
+        eventChannel.setStreamHandler(nil)
+        eventSink = nil
+        videoTrack = nil
     }
+
     
     func addListener(listener: MotionDetectionListener){
         self.listener = listener
@@ -105,7 +122,7 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     }
     
     private func sendDetectionResult(_ result: DetectionResult) {
-        guard self.started else { return }
+        guard self.active else { return }
         let param:[String : Any] = result.toMap()
         DispatchQueue.main.async { [weak self] in
             guard let eventSink = self?.eventSink else {
