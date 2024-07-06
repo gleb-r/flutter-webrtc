@@ -430,7 +430,7 @@ MotionDetection* motionDetection;
         } else {
             if (motionDetection == nil) {
                 motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
-                [motionDetection setVideoTrack:videoTrack];
+                [motionDetection setVideoTrackWithVideoTrack:videoTrack];
             }
             if (videoRecorder == nil) {
                 videoRecorder = [[VideoRecorder alloc] initWithBinaryMessenger:_messenger
@@ -489,8 +489,8 @@ MotionDetection* motionDetection;
             }
             motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
         }
-        [motionDetection setVideoTrack:videoTrack];
-        [motionDetection setDetection:request];
+        [motionDetection setVideoTrackWithVideoTrack:videoTrack];
+        [motionDetection setDetectionWithRequest:request];
         result(nil);
 
    } else if ([@"setLocalDescription" isEqualToString:call.method]) {
@@ -644,7 +644,7 @@ MotionDetection* motionDetection;
       for (RTCVideoTrack* track in stream.videoTracks) {
         [_localTracks removeObjectForKey:track.trackId];
         if (motionDetection != nil) {
-            [motionDetection removeVideoTrack:track.trackId];
+            [motionDetection removeVideoTrackWithTrackId:track.trackId];
         }
         RTCVideoTrack* videoTrack = (RTCVideoTrack*)track;
         CapturerStopHandler stopHandler = self.videoCapturerStopHandlers[videoTrack.trackId];
@@ -757,7 +757,7 @@ MotionDetection* motionDetection;
       }
     }
     if (motionDetection != nil) {
-        [motionDetection removeVideoTrack:trackId];
+        [motionDetection removeVideoTrackWithTrackId:trackId];
     }
     [_localTracks removeObjectForKey:trackId];
     if (audioTrack) {
@@ -1563,7 +1563,7 @@ MotionDetection* motionDetection;
         @"remote" : @(NO)
       }];
       if (motionDetection != nil) {
-        [motionDetection addVideoTrack:(RTCVideoTrack*)track];
+        [motionDetection setVideoTrackWithVideoTrack:(RTCVideoTrack*)track];
       }
     }
 

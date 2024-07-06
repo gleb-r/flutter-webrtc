@@ -15,6 +15,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		F762B9AF2C39B879001A1A12 /* FlutterWebRTCPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = F762B9AE2C39B879001A1A12 /* FlutterWebRTCPlugin.m */; };
 		F76EA2C32C0A449C005F8FDD /* VideoRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78311102C066817001145C6 /* VideoRecorder.swift */; };
 		F78311152C066817001145C6 /* .gitkeep in Resources */ = {isa = PBXBuildFile; fileRef = F78310E42C066817001145C6 /* .gitkeep */; };
 		F78311162C066817001145C6 /* FlutterBroadcastScreenCapturer.m in Sources */ = {isa = PBXBuildFile; fileRef = F78310E72C066817001145C6 /* FlutterBroadcastScreenCapturer.m */; };
@@ -35,7 +36,6 @@
 		F78311252C066817001145C6 /* FlutterRTCPeerConnection.m in Sources */ = {isa = PBXBuildFile; fileRef = F78311032C066817001145C6 /* FlutterRTCPeerConnection.m */; };
 		F78311262C066817001145C6 /* FlutterRTCVideoRecorder.m in Sources */ = {isa = PBXBuildFile; fileRef = F78311052C066817001145C6 /* FlutterRTCVideoRecorder.m */; };
 		F78311272C066817001145C6 /* FlutterRTCVideoRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = F78311072C066817001145C6 /* FlutterRTCVideoRenderer.m */; };
-		F78311282C066817001145C6 /* FlutterWebRTCPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = F78311092C066817001145C6 /* FlutterWebRTCPlugin.m */; };
 		F78311292C066817001145C6 /* MotionDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F783110B2C066817001145C6 /* MotionDetection.swift */; };
 		F783112A2C066817001145C6 /* PixelDection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F783110C2C066817001145C6 /* PixelDection.swift */; };
 		F783112B2C066817001145C6 /* RecordingResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = F783110D2C066817001145C6 /* RecordingResult.swift */; };
@@ -81,6 +81,8 @@
 		A5141B14310470EA47408D93 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAFCDDCEFDFC3040D71CB9D6 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		DFD1A8CF7D5363219CF99A19 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F762B9AD2C39B830001A1A12 /* FlutterWebRTCPlugin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterWebRTCPlugin.h; sourceTree = "<group>"; };
+		F762B9AE2C39B879001A1A12 /* FlutterWebRTCPlugin.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FlutterWebRTCPlugin.m; path = ../../common/darwin/Classes/FlutterWebRTCPlugin.m; sourceTree = "<group>"; };
 		F78310E42C066817001145C6 /* .gitkeep */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		F78310E62C066817001145C6 /* FlutterBroadcastScreenCapturer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterBroadcastScreenCapturer.h; sourceTree = "<group>"; };
 		F78310E72C066817001145C6 /* FlutterBroadcastScreenCapturer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterBroadcastScreenCapturer.m; sourceTree = "<group>"; };
@@ -116,7 +118,6 @@
 		F78311062C066817001145C6 /* FlutterRTCVideoRenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCVideoRenderer.h; sourceTree = "<group>"; };
 		F78311072C066817001145C6 /* FlutterRTCVideoRenderer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCVideoRenderer.m; sourceTree = "<group>"; };
 		F78311082C066817001145C6 /* FlutterWebRTCPlugin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterWebRTCPlugin.h; sourceTree = "<group>"; };
-		F78311092C066817001145C6 /* FlutterWebRTCPlugin.m */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.objc; fileEncoding = 4; path = FlutterWebRTCPlugin.m; sourceTree = "<group>"; };
 		F783110A2C066817001145C6 /* media_stream_interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = media_stream_interface.h; sourceTree = "<group>"; };
 		F783110B2C066817001145C6 /* MotionDetection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MotionDetection.swift; sourceTree = "<group>"; };
 		F783110C2C066817001145C6 /* PixelDection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PixelDection.swift; sourceTree = "<group>"; };
@@ -250,6 +251,8 @@
 		F78311112C066817001145C6 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
+				F762B9AD2C39B830001A1A12 /* FlutterWebRTCPlugin.h */,
+				F762B9AE2C39B879001A1A12 /* FlutterWebRTCPlugin.m */,
 				F7F362182C0A292000D3BCF9 /* Square.swift */,
 				F78310ED2C066817001145C6 /* audio_sink_bridge.cpp */,
 				F78310EC2C066817001145C6 /* Broadcast */,
@@ -280,7 +283,6 @@
 				F78311062C066817001145C6 /* FlutterRTCVideoRenderer.h */,
 				F78311072C066817001145C6 /* FlutterRTCVideoRenderer.m */,
 				F78311082C066817001145C6 /* FlutterWebRTCPlugin.h */,
-				F78311092C066817001145C6 /* FlutterWebRTCPlugin.m */,
 				F783110A2C066817001145C6 /* media_stream_interface.h */,
 				F783110B2C066817001145C6 /* MotionDetection.swift */,
 				F783110C2C066817001145C6 /* PixelDection.swift */,
@@ -466,13 +468,13 @@
 				F78311222C066817001145C6 /* FlutterRTCFrameCapturer.m in Sources */,
 				F78311272C066817001145C6 /* FlutterRTCVideoRenderer.m in Sources */,
 				F783111D2C066817001145C6 /* DetectionData.swift in Sources */,
-				F78311282C066817001145C6 /* FlutterWebRTCPlugin.m in Sources */,
 				F783111A2C066817001145C6 /* AudioUtils.m in Sources */,
 				978B8F6F1D3862AE00F588F7 /* AppDelegate.m in Sources */,
 				F78311252C066817001145C6 /* FlutterRTCPeerConnection.m in Sources */,
 				F783111E2C066817001145C6 /* FlutterRPScreenRecorder.m in Sources */,
 				F78311212C066817001145C6 /* FlutterRTCDesktopCapturer.m in Sources */,
 				F78311262C066817001145C6 /* FlutterRTCVideoRecorder.m in Sources */,
+				F762B9AF2C39B879001A1A12 /* FlutterWebRTCPlugin.m in Sources */,
 				F78311202C066817001145C6 /* FlutterRTCDataChannel.m in Sources */,
 				F76EA2C32C0A449C005F8FDD /* VideoRecorder.swift in Sources */,
 				97C146F31CF9000F007C117D /* main.m in Sources */,
