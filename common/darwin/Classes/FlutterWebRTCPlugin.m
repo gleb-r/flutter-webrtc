@@ -479,17 +479,16 @@ MotionDetection* motionDetection;
             result([FlutterError errorWithCode:@"Wrong arags in motionDetection" message:nil details:nil]);
             return;
         }
-        if (videoTrack == nil) {
-            result([FlutterError errorWithCode:@"No local VideoTrackin motionDetection" message:nil details:nil]);
-            return;
-        } if (motionDetection == nil) {
+        if (motionDetection == nil) {
             if (![request enabled]) {
                 result(nil);
                 return;
             }
             motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
         }
-        [motionDetection setVideoTrackWithVideoTrack:videoTrack];
+        if (videoTrack != nil) {
+            [motionDetection setVideoTrackWithVideoTrack:videoTrack];
+        }
         [motionDetection setDetectionWithRequest:request];
         result(nil);
 
@@ -1562,6 +1561,7 @@ MotionDetection* motionDetection;
         @"readyState" : @"live",
         @"remote" : @(NO)
       }];
+        NSLog(@"videoTracks: %@", track.kind);
       if (motionDetection != nil) {
         [motionDetection setVideoTrackWithVideoTrack:(RTCVideoTrack*)track];
       }
@@ -2335,4 +2335,15 @@ MotionDetection* motionDetection;
   };
   return params;
 }
+
+- (void) localTrackAdded {
+  NSLog(@"localTrackAdded");
+        if (motionDetection != nil) {
+                RTCVideoTrack* videoTrack = [self getFirstLocalVideoTrack];
+                if (videoTrack != nil) {
+                [motionDetection setVideoTrackWithVideoTrack:videoTrack];
+                }
+        }
+}
+
 @end

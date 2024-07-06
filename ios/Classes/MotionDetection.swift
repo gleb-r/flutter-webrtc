@@ -21,6 +21,7 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     private var detectionInterval: Double = 0.3
 
     private var listener: MotionDetectionListener?
+    private let log = Log(subsystem: "MotionDetection", category: "")
     
     private var active = false
     @objc public init(binaryMessenger: FlutterBinaryMessenger) {
@@ -36,8 +37,10 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     }
     
     @objc public func setVideoTrack(videoTrack: RTCVideoTrack) {
-        guard self.videoTrack != nil else { return }
+        log.d("setVideoTrack")
+        guard self.videoTrack == nil else { return }
         self.videoTrack = videoTrack
+        log.d("setVideoTrack \(active)")
         if active {
             start(videoTrack: videoTrack)
         }
@@ -47,11 +50,13 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
         guard let videoTrack = self.videoTrack, videoTrack.trackId == trackId else { return }
         stop()
         self.videoTrack = nil
+        log.d("removedVideoTrack")
     }
     
     
     @objc public func setDetection(request: DetectionRequest
     ) {
+        log.d("setDetection \(request.enabled)")
         self.detectionLevel = request.level
         guard self.active != request.enabled else { return }
         self.active = request.enabled
@@ -66,11 +71,13 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
     
     private func start(videoTrack: RTCVideoTrack) {
         videoTrack.add(self)
+        log.d("started")
     }
     
     @objc public func stop() {
         videoTrack?.remove(self)
         self.pixelDetection.resetPrevious()
+        log.d("stopped")
     }
 
     @objc public func dispose() {
@@ -80,6 +87,7 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
         eventChannel.setStreamHandler(nil)
         eventSink = nil
         videoTrack = nil
+        log.d("disposed")
     }
 
     

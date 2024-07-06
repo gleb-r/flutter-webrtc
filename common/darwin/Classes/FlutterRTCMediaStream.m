@@ -490,6 +490,7 @@ typedef void (^NavigatorUserMediaSuccessCallback)(RTCMediaStream* mediaStream);
     [mediaStream addVideoTrack:videoTrack];
 
     [self.localTracks setObject:videoTrack forKey:trackUUID];
+    self.localTrackAdded;
 
     successCallback(mediaStream);
   } else {

@@ -1357,15 +1357,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     return true;
   }
 
-    @Override
-    public boolean putLocalTrack(String trackId, MediaStreamTrack track) {
-        localTracks.put(trackId, track);
-        if (track.kind().equals(MediaStreamTrack.VIDEO_TRACK_KIND) &&
-                motionDetection != null) {
-            motionDetection.setVideoTrack((VideoTrack) track);
-        }
-        return true;
+  @Override
+  public boolean putLocalTrack(String trackId, MediaStreamTrack track) {
+    localTracks.put(trackId, track);
+    if (track.kind().equals(MediaStreamTrack.VIDEO_TRACK_KIND) &&
+            motionDetection != null) {
+      motionDetection.setVideoTrack((VideoTrack) track);
     }
+    return true;
+  }
 
   @Override
   public MediaStreamTrack getLocalTrack(String trackId) {
