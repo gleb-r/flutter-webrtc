@@ -1,7 +1,7 @@
 import 'dart:async';
 
-
 import 'package:flutter_webrtc/src/native/video_recorder/recording_state.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../../../flutter_webrtc.dart';
 
@@ -22,11 +22,18 @@ abstract class IVideoRecorder {
   final Function(Exception error) onError;
   final Function(RTCRecordResult result) onRecorded;
 
-  Stream<RecordingState> get recordStateStream;
-
-  RecordingState get currentState;
-
   DetectionData? detectionOnVideo;
 
-  Future<void> dispose();
+  Future<void> dispose() async {
+    if (stateSubject.value.isRecording) {
+      await stop();
+    }
+    await stateSubject.close();
+  }
+
+  final stateSubject = BehaviorSubject.seeded(RecordingState.idle);
+
+  Stream<RecordingState> get recordStateStream => stateSubject.stream;
+
+  RecordingState get currentState => stateSubject.value;
 }

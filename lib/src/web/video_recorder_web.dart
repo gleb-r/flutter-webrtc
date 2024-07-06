@@ -28,18 +28,20 @@ class VideoRecorder extends IVideoRecorder {
       mimeType: "video/webm",
     );
     _recordStartTime = DateTime.now();
+    stateSubject.add(RecordingState.recording);
     return true;
   }
 
   @override
-  Future<RTCRecordResult> stop() async {
+  Future<void> stop() async {
     if (_mediaRecorder == null || _recordStartTime == null) {
       throw Exception('MediaRecorder is not started');
     }
+    stateSubject.add(RecordingState.stop);
     final recordId = DateTime.now().millisecondsSinceEpoch.toString();
     final String videoBlobUrl = await _mediaRecorder?.stop();
     final duration = DateTime.now().difference(_recordStartTime!);
-    return RTCRecordResult(
+    onRecorded(RTCRecordResult(
       recordId: recordId,
       videoPath: videoBlobUrl,
       frameRotation: 0,
@@ -48,20 +50,10 @@ class VideoRecorder extends IVideoRecorder {
       frameInterval: 300,
       // TODO: get from detection
       durationMs: duration.inMilliseconds,
-    );
+    ));
+    _mediaRecorder = null;
+    _recordStartTime = null;
+    stateSubject.add(RecordingState.idle);
   }
 
-  @override
-  Future<void> dispose() {
-    // TODO: implement dispose
-    throw UnimplementedError();
-  }
-
-  @override
-  // TODO: implement recordStateStream
-  Stream<RecordingState> get recordStateStream => throw UnimplementedError();
-
-  @override
-  // TODO: implement currentState
-  RecordingState get currentState => throw UnimplementedError();
 }

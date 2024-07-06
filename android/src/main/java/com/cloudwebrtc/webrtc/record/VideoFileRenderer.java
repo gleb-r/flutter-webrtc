@@ -74,6 +74,7 @@ public class VideoFileRenderer implements VideoSink, SamplesReadyCallback {
             audioThreadHandler = null;
         }
         bufferInfo = new MediaCodec.BufferInfo();
+        bufferInfo.flags =  MediaCodec.BUFFER_FLAG_KEY_FRAME;
         this.sharedContext = sharedContext;
         this.listener = listener;
 

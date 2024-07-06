@@ -5,7 +5,6 @@ import android.os.Looper
 import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
-import org.webrtc.NetworkMonitor.init
 import org.webrtc.VideoFrame
 import org.webrtc.VideoSink
 import org.webrtc.VideoTrack
@@ -20,22 +19,44 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     private var prevDetection = 0L
     private var detectionLevel = 2
     private var intervalMs = 300
-    private var started = false
     private var listener: Listener? = null
 
     init {
         eventChannel.setStreamHandler(this)
     }
 
-    fun requestMotionDetection(request: DetectionRequest, videoTrack: VideoTrack) {
-        if (!request.enabled) {
-            stopDetection()
-            return
-        }
-        if (!started) {
+    fun setVideoTrack(videoTrack: VideoTrack) {
+        this.videoTrack = videoTrack
+        if (isActive) {
             startDetection(videoTrack)
         }
-        setDetectionLevel(request.level)
+    }
+
+    fun removeVideoTrack(trackId: String) {
+        if (videoTrack?.id() != trackId) {
+            return
+        }
+        stopDetection()
+        videoTrack = null
+    }
+
+    private var isActive = false
+
+    fun requestMotionDetection(request: DetectionRequest) {
+        detectionLevel = request.level
+        if (request.enabled == isActive) {
+            return
+        }
+        isActive = request.enabled
+        if (isActive) {
+            videoTrack?.let { track ->
+                startDetection(track)
+            } ?: run {
+                Log.d("Motion detection", "VideoTrack is null")
+            }
+        } else {
+            stopDetection()
+        }
     }
 
     fun addListener(listener: Listener) {
@@ -47,27 +68,18 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     }
 
     private fun startDetection(videoTrack: VideoTrack) {
-        this.started = true
-        this.videoTrack = videoTrack
         videoTrack.addSink(this)
-        Log.d("TAG", "Motion detection started")
+        Log.d("Motion detection", "Motion detection started")
     }
 
     private fun stopDetection() {
         videoTrack?.removeSink(this)
-        videoTrack = null
         pixelDetection.resetPrevious()
-        this.started = false
         Log.d("TAG", "Motion detection stopped")
     }
 
     val frameIntervalMs: Long
         get() = this.intervalMs.toLong()
-
-
-    private fun setDetectionLevel(level: Int) {
-        this.detectionLevel = level
-    }
 
     override fun onFrame(videoFrame: VideoFrame) {
         if (System.currentTimeMillis() - prevDetection < intervalMs) {
@@ -91,7 +103,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     }
 
     private fun sendDetection(detected: DetectionResult) {
-        if (!started) return
+        if (!isActive) return
         val params = detected.toMap()
         Handler(Looper.getMainLooper()).post {
             eventSink?.success(params)
@@ -107,11 +119,11 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     }
 
     fun dispose() {
-        if (started) {
+        if (isActive) {
             stopDetection()
-            started = false
         }
-        eventSink = null;
+        videoTrack = null
+        eventSink = null
 
     }
 
