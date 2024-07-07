@@ -713,7 +713,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                 }
                 if (motionDetection == null) {
                     motionDetection = new MotionDetection(messenger);
-                    motionDetection.setVideoTrack(videoTrack);
+                    VideoTrack loaclVideoTrack = getLocalVideoTrack(mediaStreamId);
+                    if (loaclVideoTrack != null) {
+                      motionDetection.setVideoTrack(loaclVideoTrack);
+                    }
                 }
                 if (videoRecorderFactory == null) {
                     videoRecorderFactory = new VideoRecorderFactory(
@@ -771,7 +774,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                 if (motionDetection == null) {
                     motionDetection = new MotionDetection(messenger);
                     VideoTrack track = getLocalVideoTrack();
-                    motionDetection.setVideoTrack(track);
+                    if (track != null) {
+                      motionDetection.setVideoTrack(track);
+                    }
                 }
                 DetectionRequest request = DetectionRequest.Companion.fromMethodCall(call);
                 if (request == null) {
