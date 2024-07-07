@@ -121,6 +121,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   private CustomVideoEncoderFactory videoEncoderFactory;
 
   private CustomVideoDecoderFactory videoDecoderFactory;
+  private MotionDetection motionDetection;
+
+  private VideoRecorderFactory videoRecorderFactory;
 
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry) {
     this.context = context;
@@ -530,173 +533,173 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         render.setEventChannel(eventChannel);
         render.setId((int) entry.id());
 
-                ConstraintsMap params = new ConstraintsMap();
-                params.putInt("textureId", (int) entry.id());
-                result.success(params.toMap());
-                break;
+        ConstraintsMap params = new ConstraintsMap();
+        params.putInt("textureId", (int) entry.id());
+        result.success(params.toMap());
+        break;
+      }
+      case "videoRendererDispose": {
+        int textureId = call.argument("textureId");
+        FlutterRTCVideoRenderer render = renders.get(textureId);
+        if (render == null) {
+          resultError("videoRendererDispose", "render [" + textureId + "] not found !", result);
+          return;
+        }
+        render.Dispose();
+        renders.delete(textureId);
+        result.success(null);
+        break;
+      }
+      case "videoRendererSetSrcObject": {
+        int textureId = call.argument("textureId");
+        String streamId = call.argument("streamId");
+        String ownerTag = call.argument("ownerTag");
+        String trackId = call.argument("trackId");
+        FlutterRTCVideoRenderer render = renders.get(textureId);
+        if (render == null) {
+          resultError("videoRendererSetSrcObject", "render [" + textureId + "] not found !", result);
+          return;
+        }
+        MediaStream stream = null;
+        if (ownerTag.equals("local")) {
+          stream = localStreams.get(streamId);
+        } else {
+          stream = getStreamForId(streamId, ownerTag);
+        }
+        if (trackId != null && !trackId.equals("0")){
+          render.setStream(stream, trackId, ownerTag);
+        } else {
+          render.setStream(stream, ownerTag);
+        }
+        result.success(null);
+        break;
+      }
+      case "mediaStreamTrackHasTorch": {
+        String trackId = call.argument("trackId");
+        getUserMediaImpl.hasTorch(trackId, result);
+        break;
+      }
+      case "mediaStreamTrackSetTorch": {
+        String trackId = call.argument("trackId");
+        boolean torch = call.argument("torch");
+        getUserMediaImpl.setTorch(trackId, torch, result);
+        break;
+      }
+      case "mediaStreamTrackSetZoom": {
+        String trackId = call.argument("trackId");
+        double zoomLevel = call.argument("zoomLevel");
+        getUserMediaImpl.setZoom(trackId, zoomLevel, result);
+        break;
+      }
+      case "mediaStreamTrackSwitchCamera": {
+        String trackId = call.argument("trackId");
+        getUserMediaImpl.switchCamera(trackId, result);
+        break;
+      }
+      case "setVolume": {
+        String trackId = call.argument("trackId");
+        double volume = call.argument("volume");
+        String peerConnectionId = call.argument("peerConnectionId");
+        mediaStreamTrackSetVolume(trackId, volume, peerConnectionId);
+        result.success(null);
+        break;
+      }
+      case "selectAudioOutput": {
+        String deviceId = call.argument("deviceId");
+        AudioSwitchManager.instance.selectAudioOutput(AudioDeviceKind.fromTypeName(deviceId));
+        result.success(null);
+        break;
+      }
+      case "clearAndroidCommunicationDevice": {
+        AudioSwitchManager.instance.clearCommunicationDevice();
+        break;
+      }
+      case "setMicrophoneMute":
+        boolean mute = call.argument("mute");
+        AudioSwitchManager.instance.setMicrophoneMute(mute);
+        result.success(null);
+        break;
+      case "selectAudioInput":
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
+          String deviceId = call.argument("deviceId");
+          getUserMediaImpl.setPreferredInputDevice(deviceId);
+          result.success(null);
+        } else {
+          result.notImplemented();
+        }
+        break;
+      case "setAndroidAudioConfiguration": {
+        Map<String, Object> configuration = call.argument("configuration");
+        AudioSwitchManager.instance.setAudioConfiguration(configuration);
+        result.success(null);
+        break;
+      }
+      case "enableSpeakerphone":
+        boolean enable = call.argument("enable");
+        AudioSwitchManager.instance.enableSpeakerphone(enable);
+        result.success(null);
+        break;
+      case "enableSpeakerphoneButPreferBluetooth":
+        AudioSwitchManager.instance.enableSpeakerButPreferBluetooth();
+        result.success(null);
+        break;
+      case "requestCapturePermission": {
+        getUserMediaImpl.requestCapturePermission(result);
+        break;
+      }
+      case "getDisplayMedia": {
+        Map<String, Object> constraints = call.argument("constraints");
+        ConstraintsMap constraintsMap = new ConstraintsMap(constraints);
+        getDisplayMedia(constraintsMap, result);
+        break;
+      }
+      case "startRecordToFile":
+        //This method can a lot of different exceptions
+        //so we should notify plugin user about them
+        try {
+          String path = call.argument("path");
+          VideoTrack videoTrack = null;
+          String videoTrackId = call.argument("videoTrackId");
+          String peerConnectionId = call.argument("peerConnectionId");
+          if (videoTrackId != null) {
+            MediaStreamTrack track = getTrackForId(videoTrackId, peerConnectionId);
+            if (track instanceof VideoTrack) {
+              videoTrack = (VideoTrack) track;
             }
-            case "videoRendererDispose": {
-                int textureId = call.argument("textureId");
-                FlutterRTCVideoRenderer render = renders.get(textureId);
-                if (render == null) {
-                    resultError("videoRendererDispose", "render [" + textureId + "] not found !", result);
-                    return;
-                }
-                render.Dispose();
-                renders.delete(textureId);
-                result.success(null);
-                break;
+          }
+          AudioChannel audioChannel = null;
+          if (call.hasArgument("audioChannel")
+                  && call.argument("audioChannel") != null) {
+            audioChannel = AudioChannel.values()[(Integer) call.argument("audioChannel")];
+          }
+          Integer recorderId = call.argument("recorderId");
+          if (videoTrack != null || audioChannel != null) {
+            getUserMediaImpl.startRecordingToFile(path, recorderId, videoTrack, audioChannel);
+            result.success(null);
+          } else {
+            resultError("startRecordToFile", "No tracks", result);
+          }
+        } catch (Exception e) {
+          resultError("startRecordToFile", e.getMessage(), result);
+        }
+        break;
+      case "stopRecordToFile":
+        Integer recorderId = call.argument("recorderId");
+        getUserMediaImpl.stopRecording(recorderId);
+        result.success(null);
+        break;
+      case "startRecordVideo":
+            String dirPath = call.argument("dirPath");
+            String mediaStreamId = call.argument("streamId");
+            Boolean enableAudio = call.argument("enableAudio");
+            Integer detectionIntervalMs = call.argument("interval");
+            if ( mediaStreamId == null
+                    || dirPath == null
+                    || enableAudio == null
+            ) {
+                resultError(call.method, "Wrong arguments in method", result);
+                return;
             }
-            case "videoRendererSetSrcObject": {
-                int textureId = call.argument("textureId");
-                String streamId = call.argument("streamId");
-                String ownerTag = call.argument("ownerTag");
-                String trackId = call.argument("trackId");
-                FlutterRTCVideoRenderer render = renders.get(textureId);
-                if (render == null) {
-                    resultError("videoRendererSetSrcObject", "render [" + textureId + "] not found !", result);
-                    return;
-                }
-                MediaStream stream = null;
-                if (ownerTag.equals("local")) {
-                    stream = localStreams.get(streamId);
-                } else {
-                    stream = getStreamForId(streamId, ownerTag);
-                }
-                if (trackId != null && !trackId.equals("0")) {
-                    render.setStream(stream, trackId, ownerTag);
-                } else {
-                    render.setStream(stream, ownerTag);
-                }
-                result.success(null);
-                break;
-            }
-            case "mediaStreamTrackHasTorch": {
-                String trackId = call.argument("trackId");
-                getUserMediaImpl.hasTorch(trackId, result);
-                break;
-            }
-            case "mediaStreamTrackSetTorch": {
-                String trackId = call.argument("trackId");
-                boolean torch = call.argument("torch");
-                getUserMediaImpl.setTorch(trackId, torch, result);
-                break;
-            }
-            case "mediaStreamTrackSetZoom": {
-                String trackId = call.argument("trackId");
-                double zoomLevel = call.argument("zoomLevel");
-                getUserMediaImpl.setZoom(trackId, zoomLevel, result);
-                break;
-            }
-            case "mediaStreamTrackSwitchCamera": {
-                String trackId = call.argument("trackId");
-                getUserMediaImpl.switchCamera(trackId, result);
-                break;
-            }
-            case "setVolume": {
-                String trackId = call.argument("trackId");
-                double volume = call.argument("volume");
-                String peerConnectionId = call.argument("peerConnectionId");
-                mediaStreamTrackSetVolume(trackId, volume, peerConnectionId);
-                result.success(null);
-                break;
-            }
-            case "selectAudioOutput": {
-                String deviceId = call.argument("deviceId");
-                AudioSwitchManager.instance.selectAudioOutput(AudioDeviceKind.fromTypeName(deviceId));
-                result.success(null);
-                break;
-            }
-            case "clearAndroidCommunicationDevice": {
-                AudioSwitchManager.instance.clearCommunicationDevice();
-                break;
-            }
-            case "setMicrophoneMute":
-                boolean mute = call.argument("mute");
-                AudioSwitchManager.instance.setMicrophoneMute(mute);
-                result.success(null);
-                break;
-            case "selectAudioInput":
-                if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
-                    String deviceId = call.argument("deviceId");
-                    getUserMediaImpl.setPreferredInputDevice(deviceId);
-                    result.success(null);
-                } else {
-                    result.notImplemented();
-                }
-                break;
-            case "setAndroidAudioConfiguration": {
-                Map<String, Object> configuration = call.argument("configuration");
-                AudioSwitchManager.instance.setAudioConfiguration(configuration);
-                result.success(null);
-                break;
-            }
-            case "enableSpeakerphone":
-                boolean enable = call.argument("enable");
-                AudioSwitchManager.instance.enableSpeakerphone(enable);
-                result.success(null);
-                break;
-            case "enableSpeakerphoneButPreferBluetooth":
-                AudioSwitchManager.instance.enableSpeakerButPreferBluetooth();
-                result.success(null);
-                break;
-            case "requestCapturePermission": {
-                getUserMediaImpl.requestCapturePermission(result);
-                break;
-            }
-            case "getDisplayMedia": {
-                Map<String, Object> constraints = call.argument("constraints");
-                ConstraintsMap constraintsMap = new ConstraintsMap(constraints);
-                getDisplayMedia(constraintsMap, result);
-                break;
-            }
-            case "startRecordToFile":
-                //This method can a lot of different exceptions
-                //so we should notify plugin user about them
-                try {
-                    String path = call.argument("path");
-                    VideoTrack videoTrack = null;
-                    String videoTrackId = call.argument("videoTrackId");
-                    String peerConnectionId = call.argument("peerConnectionId");
-                    if (videoTrackId != null) {
-                        MediaStreamTrack track = getTrackForId(videoTrackId, peerConnectionId);
-                        if (track instanceof VideoTrack) {
-                            videoTrack = (VideoTrack) track;
-                        }
-                    }
-                    AudioChannel audioChannel = null;
-                    if (call.hasArgument("audioChannel")
-                            && call.argument("audioChannel") != null) {
-                        audioChannel = AudioChannel.values()[(Integer) call.argument("audioChannel")];
-                    }
-                    Integer recorderId = call.argument("recorderId");
-                    if (videoTrack != null || audioChannel != null) {
-                        getUserMediaImpl.startRecordingToFile(path, recorderId, videoTrack, audioChannel);
-                        result.success(null);
-                    } else {
-                        resultError("startRecordToFile", "No tracks", result);
-                    }
-                } catch (Exception e) {
-                    resultError("startRecordToFile", e.getMessage(), result);
-                }
-                break;
-            case "stopRecordToFile":
-                Integer recorderId = call.argument("recorderId");
-                getUserMediaImpl.stopRecording(recorderId);
-                result.success(null);
-                break;
-            case "startRecordVideo":
-                String dirPath = call.argument("dirPath");
-                String mediaStreamId = call.argument("streamId");
-                Boolean enableAudio = call.argument("enableAudio");
-                Integer detectionIntervalMs = call.argument("interval");
-                if (mediaStreamId == null
-                        || dirPath == null
-                        || enableAudio == null
-                ) {
-                    resultError(call.method, "Wrong arguments in method", result);
-                    return;
-                }
 
                 VideoTrack videoTrack = getLocalVideoTrack(mediaStreamId);
                 Boolean isLocal = true;
