@@ -1,8 +1,16 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
 class DetectionFrame extends Equatable {
   const DetectionFrame(
       this.detectionList, this.aspectRatio, this.xCount, this.yCount);
+
+  factory DetectionFrame.fromString(String string) {
+    return DetectionFrame.fromMap(jsonDecode(string));
+  }
+
+  factory DetectionFrame.empty() => DetectionFrame(const [], 1, 1, 1);
 
   factory DetectionFrame.fromMap(dynamic event) {
     final map = Map<String, dynamic>.from(event as Map);
@@ -14,7 +22,18 @@ class DetectionFrame extends Equatable {
     return DetectionFrame(rectList, aspectRatio, xCount, yCount);
   }
 
-  factory DetectionFrame.empty() => DetectionFrame(const [], 1, 1, 1);
+  Map<String, dynamic> toMap() {
+    return {
+      'detected': detectionList.map((sq) => '${sq.x}:${sq.y}').toList(),
+      'aspect': aspectRatio,
+      'xCount': xCount,
+      'yCount': yCount,
+    };
+  }
+
+  String serialized() {
+    return jsonEncode(toMap());
+  }
 
   final List<Square> detectionList;
   final double aspectRatio;
