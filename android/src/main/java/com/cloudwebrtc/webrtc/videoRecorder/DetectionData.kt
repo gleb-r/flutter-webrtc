@@ -1,5 +1,6 @@
 package com.cloudwebrtc.webrtc.videoRecorder
 
+import android.util.Log
 import com.cloudwebrtc.webrtc.detection.DetectionResult
 
 public data class DetectionData(
@@ -28,7 +29,8 @@ public data class DetectionData(
 
     fun addFrame(frameIndex: String, detectionResult: DetectionResult) {
         if (detectionResult.xCount != xCount || detectionResult.yCount != yCount) {
-            throw IllegalArgumentException("DetectionData: xCount or yCount not match")
+            Log.e("Motion detection","DetectionData: xCount or yCount not match")
+            return
         }
         frames[frameIndex] = detectionResult.detectedList.map { it.toString() }
     }
