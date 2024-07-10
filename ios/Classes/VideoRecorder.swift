@@ -164,7 +164,6 @@ public class VideoRecorder:NSObject {
                 recordId: recordId,
                 videoPath: videoUrl.path,
                 durationMs: durationMs,
-                frameInterval: self.motionDetection.frameIntervalMs,
                 rotationDegree: self.rotation.rawValue,
                 detectionData: self.detectionData
             )
@@ -411,7 +410,10 @@ extension VideoRecorder: MotionDetectionListener {
         let frameIntervalMs = motionDetection.frameIntervalMs
         let frameIndex = Int((CACurrentMediaTime() - firstFrameTime) * 1000) / frameIntervalMs
         if detectionData == nil {
-            detectionData = DetectionData.init(detectionResult: result, frameIndex: frameIndex)
+            detectionData = DetectionData.init(
+                detectionResult: result,
+                frameIndex: frameIndex,
+                frameIntervalMs: frameIntervalMs)
         } else {
             do {
                 try detectionData?.addDetection(detection: result, frameIndex: frameIndex)

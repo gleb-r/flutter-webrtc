@@ -14,7 +14,6 @@ struct RecordingResult{
     let recordId: String
     let videoPath: String
     let durationMs:Int
-    let frameInterval:Int
     let rotationDegree:Int
     let detectionData: DetectionData?
     
@@ -25,7 +24,6 @@ struct RecordingResult{
             "video": videoPath,
             "rotation": NSNumber(value: rotationDegree),
             "duration": NSNumber(value: durationMs),
-            "interval": NSNumber(value: frameInterval),
             "detection": detectionData?.toMap()
         ]
     }

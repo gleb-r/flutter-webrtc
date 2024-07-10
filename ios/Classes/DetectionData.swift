@@ -15,12 +15,14 @@ struct DetectionData {
     let aspect: Double
     let xSqCount: Int
     let ySqCount: Int
+    let frameIntervalMs: Int
     
-    init(detectionResult: DetectionResult, frameIndex: Int) {
+    init(detectionResult: DetectionResult, frameIndex: Int, frameIntervalMs: Int) {
         self.frames = ["\(frameIndex)": detectionResult.detectedList]
         self.aspect = detectionResult.aspectRatio
         self.xSqCount = detectionResult.xCount
         self.ySqCount = detectionResult.yCount
+        self.frameIntervalMs = frameIntervalMs
     }
     
     mutating func addDetection(detection: DetectionResult, frameIndex: Int) throws  {
@@ -42,7 +44,8 @@ struct DetectionData {
             "f": framesJson,
             "a": NSNumber(value: aspect),
             "x": NSNumber(value: xSqCount),
-            "y": NSNumber(value: ySqCount)
+            "y": NSNumber(value: ySqCount),
+            "i": NSNumber(value: frameIntervalMs)
         ]
     }
 }
