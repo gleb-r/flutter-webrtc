@@ -1,17 +1,19 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+class RecordError implements Exception {
 
-part 'record_error.freezed.dart';
-part 'record_error.g.dart';
+  RecordError({
+    required this.code,
+    this.message,
+    this.details,
+  });
 
-@freezed
-class RecordError with _$RecordError implements Exception {
-  const factory RecordError({
-    required String code,
-    String? message,
-    Map<String, dynamic>? details,
-  }) = _RecordError;
-
-  factory RecordError.fromJson(Map<String, dynamic> json) =>
-      _$RecordErrorFromJson(json);
-
+  factory RecordError.fromJson(Map<String, dynamic> json) {
+    return RecordError(
+      code: json['code'],
+      message: json['message'],
+      details: json['details'],
+    );
+  }
+  final String code;
+  final String? message;
+  final Map<String, dynamic>? details;
 }

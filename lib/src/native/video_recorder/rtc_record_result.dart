@@ -1,45 +1,68 @@
-// ignore_for_file: invalid_annotation_target
 import 'dart:convert';
 
-import 'package:freezed_annotation/freezed_annotation.dart';
+class RTCRecordResult {
+  RTCRecordResult({
+    required this.recordId,
+    required this.videoPath,
+    required this.detection,
+    required this.durationMs,
+    required this.frameRotation,
+  });
 
-part 'rtc_record_result.freezed.dart';
-part 'rtc_record_result.g.dart';
+  factory RTCRecordResult.fromJson(Map<String, dynamic> json) {
+    return RTCRecordResult(
+      recordId: json['recordId'],
+      videoPath: json['video'],
+      detection: json['detection'] != null
+          ? DetectionData.fromJson(json['detection'])
+          : null,
+      durationMs: json['duration'],
+      frameRotation: json['rotation'],
+    );
+  }
 
-@freezed
-class RTCRecordResult with _$RTCRecordResult {
-  @JsonSerializable(explicitToJson: true)
-  factory RTCRecordResult({
-    @JsonKey(name: "recordId") required String recordId,
-    @JsonKey(name: "video") required String videoPath,
-    @JsonKey(name: "detection") required DetectionData? detection,
-    @JsonKey(name: "duration") required int durationMs,
-    @JsonKey(name: "interval") required int frameInterval,
-    @JsonKey(name: "rotation") required int frameRotation,
-  }) = _RTCRecordResult;
-
-  const RTCRecordResult._();
-
-  factory RTCRecordResult.fromJson(Map<String, dynamic> json) =>
-      _$RTCRecordResultFromJson(json);
+  final String recordId;
+  final String videoPath;
+  final DetectionData? detection;
+  final int durationMs;
+  final int frameRotation;
 }
 
-@freezed
-class DetectionData with _$DetectionData {
-  factory DetectionData({
-    @JsonKey(name: "f") required Map<String, List<dynamic>> rawFrames,
-    @JsonKey(name: "a") required double aspect,
-    @JsonKey(name: "x") required int xSqCount,
-    @JsonKey(name: "y") required int ySqCount,
-  }) = _RTCDetectedFrames;
+class DetectionData {
 
-  const DetectionData._();
-
-  factory DetectionData.fromJson(Map<String, dynamic> json) =>
-      _$DetectionDataFromJson(json);
-
+  DetectionData({
+    required this.rawFrames,
+    required this.aspect,
+    required this.xSqCount,
+    required this.ySqCount,
+    required this.frameIntervalMs,
+  });
   factory DetectionData.fromString(String serialized) =>
       DetectionData.fromJson(jsonDecode(serialized));
+
+  factory DetectionData.fromJson(Map<String, dynamic> json) {
+    return DetectionData(
+      rawFrames: json['f'],
+      aspect: json['a'],
+      xSqCount: json['x'],
+      ySqCount: json['y'],
+      frameIntervalMs: json['i'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'f': rawFrames,
+        'a': aspect,
+        'x': xSqCount,
+        'y': ySqCount,
+        'i': frameIntervalMs,
+      };
+
+  final Map<String, List<dynamic>> rawFrames;
+  final double aspect;
+  final int xSqCount;
+  final int ySqCount;
+  final int frameIntervalMs;
 
   String serialized() => jsonEncode(toJson());
 }

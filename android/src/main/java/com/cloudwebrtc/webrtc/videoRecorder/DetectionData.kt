@@ -8,6 +8,7 @@ public data class DetectionData(
     val aspect: Double,
     val xCount: Int,
     val yCount: Int,
+    val frameInterval: Int,
 ) {
 
     fun toMap(): Map<String, Any> {
@@ -16,15 +17,17 @@ public data class DetectionData(
             "a" to aspect,
             "x" to xCount,
             "y" to yCount,
+            "i" to frameInterval,
         )
     }
 
 
-    constructor(detectionResult: DetectionResult, frameIndex: String) : this(
+    constructor(detectionResult: DetectionResult, frameIndex: String, frameInterval: Int) : this(
         frames = mutableMapOf(frameIndex to detectionResult.detectedList.map { it.toString() }),
         aspect = detectionResult.aspectRatio,
         xCount = detectionResult.xCount,
         yCount = detectionResult.yCount,
+        frameInterval = frameInterval
     )
 
     fun addFrame(frameIndex: String, detectionResult: DetectionResult) {

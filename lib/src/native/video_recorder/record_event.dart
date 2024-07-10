@@ -1,35 +1,34 @@
 import 'dart:convert';
 
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'record_event.freezed.dart';
-part 'record_event.g.dart';
-
-@freezed
-class RecordEvent with _$RecordEvent {
-  const factory RecordEvent({
-    required RecordEventType type,
-    Map<String, dynamic>? data,
-  }) = _RecordEvent;
+class RecordEvent {
+  RecordEvent({
+    required this.type,
+    this.data,
+  });
 
   factory RecordEvent.fromMap(Map<Object?, Object?> map) =>
       RecordEvent.fromJson(jsonDecode(jsonEncode(map)));
 
-  factory RecordEvent.fromJson(Map<String, dynamic> json) =>
-      _$RecordEventFromJson(json);
+  factory RecordEvent.fromJson(Map<String, dynamic> json) {
+    return RecordEvent(
+      type: RecordEventType.fromString(json['type']),
+      data: json['data'] as Map<String, dynamic>?,
+    );
+  }
+
+  final RecordEventType type;
+  final Map<String, dynamic>? data;
 }
 
 enum RecordEventType {
-  @JsonValue('idle')
   idle,
-  @JsonValue('starting')
   starting,
-  @JsonValue('recording')
   recording,
-  @JsonValue('stop')
   stop,
-  @JsonValue('result')
   result,
-  @JsonValue('error')
   error,
+  ;
+
+  static RecordEventType fromString(String value) =>
+      RecordEventType.values.firstWhere((element) => element.name == value);
 }

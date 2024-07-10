@@ -28,8 +28,8 @@ public class VideoRecorder(
     private val applicationContext: Context,
     private val onStateChange: (RecordState) -> Unit,
 
-) : FirstFrameListener, MotionDetection.Listener {
-    private val recordId by lazy {   UUID.randomUUID().toString() }
+    ) : FirstFrameListener, MotionDetection.Listener {
+    private val recordId by lazy { UUID.randomUUID().toString() }
 
     private val videoFile: File by lazy {
         File("$dirPath/$recordId.mp4")
@@ -83,7 +83,6 @@ public class VideoRecorder(
             recordId = recordId,
             videoPath = videoFile.absolutePath,
             durationMs = duration,
-            frameIntervalMs = motionDetection.frameIntervalMs,
             rotationDegree = frameRotation,
             detection = detectionData?.toMap()
         )
@@ -99,10 +98,15 @@ public class VideoRecorder(
     override fun onDetect(detection: DetectionResult) {
         if (detection.detectedList.isEmpty()) return
         firstFrameTime?.let { time ->
-            val frameIndex = (System.currentTimeMillis() - time) / motionDetection.frameIntervalMs
+            val frameIndex =
+                (System.currentTimeMillis() - time) / motionDetection.frameIntervalMs
             val frameIndexStr = frameIndex.toString()
             if (detectionData == null) {
-                detectionData = DetectionData(detection, frameIndexStr)
+                detectionData = DetectionData(
+                    detection,
+                    frameIndexStr,
+                    frameInterval = motionDetection.frameIntervalMs.toInt()
+                )
             } else {
                 detectionData?.addFrame(frameIndexStr, detection)
             }

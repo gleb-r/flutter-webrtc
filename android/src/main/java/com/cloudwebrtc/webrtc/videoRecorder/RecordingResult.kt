@@ -6,7 +6,6 @@ data class RecordingResult(
    val recordId: String,
     val videoPath: String,
     val durationMs: Long,
-    val frameIntervalMs: Long,
     val rotationDegree: Int,
     val detection: Map<String, Any?>?
 
@@ -16,7 +15,6 @@ data class RecordingResult(
             "recordId" to recordId,
             "video" to videoPath,
             "duration" to durationMs,
-            "interval" to frameIntervalMs,
             "rotation" to rotationDegree,
             "detection" to detection
         )

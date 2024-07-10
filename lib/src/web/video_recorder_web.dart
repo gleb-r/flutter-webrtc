@@ -47,7 +47,6 @@ class VideoRecorder extends IVideoRecorder {
       frameRotation: 0,
       // TODO: get rotation
       detection: detectionOnVideo,
-      frameInterval: 300,
       // TODO: get from detection
       durationMs: duration.inMilliseconds,
     ));
