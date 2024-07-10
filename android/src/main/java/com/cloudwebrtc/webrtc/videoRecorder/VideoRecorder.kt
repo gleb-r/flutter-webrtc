@@ -79,6 +79,7 @@ public class VideoRecorder(
 //            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
 //            values
 //        )
+        detectionData?.duration = duration
         return RecordingResult(
             recordId = recordId,
             videoPath = videoFile.absolutePath,

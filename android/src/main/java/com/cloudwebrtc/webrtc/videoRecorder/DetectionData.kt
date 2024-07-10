@@ -9,6 +9,7 @@ public data class DetectionData(
     val xCount: Int,
     val yCount: Int,
     val frameInterval: Int,
+    var duration: Long = 0
 ) {
 
     fun toMap(): Map<String, Any> {
@@ -18,6 +19,7 @@ public data class DetectionData(
             "x" to xCount,
             "y" to yCount,
             "i" to frameInterval,
+            "d" to duration
         )
     }
 

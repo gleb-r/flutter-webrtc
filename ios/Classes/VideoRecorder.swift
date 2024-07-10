@@ -160,6 +160,7 @@ public class VideoRecorder:NSObject {
             }
             let status = mediaWriter.status
             log.d("Video writing fished with:\(status)")
+            detectionData?.duration = durationMs
             let recResult = RecordingResult(
                 recordId: recordId,
                 videoPath: videoUrl.path,
@@ -413,7 +414,8 @@ extension VideoRecorder: MotionDetectionListener {
             detectionData = DetectionData.init(
                 detectionResult: result,
                 frameIndex: frameIndex,
-                frameIntervalMs: frameIntervalMs)
+                frameIntervalMs: frameIntervalMs
+            )
         } else {
             do {
                 try detectionData?.addDetection(detection: result, frameIndex: frameIndex)

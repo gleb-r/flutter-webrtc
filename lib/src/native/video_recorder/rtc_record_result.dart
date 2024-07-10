@@ -36,6 +36,7 @@ class DetectionData {
     required this.xSqCount,
     required this.ySqCount,
     required this.frameIntervalMs,
+    required this.durationMs,
   });
   factory DetectionData.fromString(String serialized) =>
       DetectionData.fromJson(jsonDecode(serialized));
@@ -47,6 +48,7 @@ class DetectionData {
       xSqCount: json['x'],
       ySqCount: json['y'],
       frameIntervalMs: json['i'],
+      durationMs: json['d'],
     );
   }
 
@@ -56,6 +58,7 @@ class DetectionData {
         'x': xSqCount,
         'y': ySqCount,
         'i': frameIntervalMs,
+        'd': durationMs,
       };
 
   final Map<String, List<dynamic>> rawFrames;
@@ -63,6 +66,7 @@ class DetectionData {
   final int xSqCount;
   final int ySqCount;
   final int frameIntervalMs;
+  int durationMs = 0;
 
   String serialized() => jsonEncode(toJson());
 }

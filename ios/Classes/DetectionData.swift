@@ -16,13 +16,16 @@ struct DetectionData {
     let xSqCount: Int
     let ySqCount: Int
     let frameIntervalMs: Int
+    var duration: Int = 0
     
-    init(detectionResult: DetectionResult, frameIndex: Int, frameIntervalMs: Int) {
+    init(detectionResult: DetectionResult,
+         frameIndex: Int,
+         frameIntervalMs: Int) {
         self.frames = ["\(frameIndex)": detectionResult.detectedList]
         self.aspect = detectionResult.aspectRatio
         self.xSqCount = detectionResult.xCount
         self.ySqCount = detectionResult.yCount
-        self.frameIntervalMs = frameIntervalMs
+        self.frameIntervalMs = frameIntervalMs        
     }
     
     mutating func addDetection(detection: DetectionResult, frameIndex: Int) throws  {
@@ -45,7 +48,8 @@ struct DetectionData {
             "a": NSNumber(value: aspect),
             "x": NSNumber(value: xSqCount),
             "y": NSNumber(value: ySqCount),
-            "i": NSNumber(value: frameIntervalMs)
+            "i": NSNumber(value: frameIntervalMs),
+            "d": NSNumber(value: duration)
         ]
     }
 }
