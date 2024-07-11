@@ -74,14 +74,7 @@ public class VideoRecorder:NSObject {
             result?(false)
             return
         }
-        guard let pathUrl = URL(string: path) else {
-            log.e("Can't start, path is invalid")
-            sendError(FlutterError(code: "Start error",
-                                   message: "Path is invalid",
-                                   details: nil))
-            result?(false)
-            return
-        }
+        let pathUrl = URL(fileURLWithPath: path)
         result?(true)
         self.videoTrack = videoTrack
         self.audioTrack = audioTrack
