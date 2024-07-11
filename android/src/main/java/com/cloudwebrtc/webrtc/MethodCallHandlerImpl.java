@@ -690,7 +690,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         break;
       case "startRecordVideo":
             String path = call.argument("path");
-            Stiing recordId = call.argument("recordId");
+            String recordId = call.argument("recordId");
             String mediaStreamId = call.argument("streamId");
             Boolean enableAudio = call.argument("enableAudio");
             Integer detectionIntervalMs = call.argument("interval");
