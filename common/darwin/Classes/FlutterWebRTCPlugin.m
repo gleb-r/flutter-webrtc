@@ -412,7 +412,8 @@ MotionDetection* motionDetection;
         }
     } else if ([@"startRecordVideo" isEqualToString:call.method]) {
         NSDictionary *arguments = call.arguments;
-        NSString *dirPath = arguments[@"dirPath"];
+        NSString *recordId = arguments[@"recordId"];
+        NSString *path = arguments[@"path"];
         NSString *peerId = arguments[@"peerId"];
         NSString *streamId = arguments[@"streamId"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
@@ -438,7 +439,8 @@ MotionDetection* motionDetection;
             }
             [videoRecorder startCapureWithVideoTrack:videoTrack
                                           audioTrack:audioTrack
-                                             dirPath:dirPath
+                                            recordId: recordId
+                                             path:path
                                          enableAudio:[enableAudio boolValue]
                                               result:result];
         }

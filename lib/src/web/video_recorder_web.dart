@@ -11,10 +11,12 @@ class VideoRecorder extends IVideoRecorder {
 
   MediaRecorder? _mediaRecorder;
   DateTime? _recordStartTime;
+  String? _recordId;
 
   @override
   Future<bool> start({
-    required String dirPath,
+    required String recordId,
+    required String path,
     required MediaStream mediaStream,
     required bool enableAudio,
   }) async {
@@ -27,6 +29,7 @@ class VideoRecorder extends IVideoRecorder {
       mediaStream,
       mimeType: "video/webm",
     );
+    _recordId = recordId;
     _recordStartTime = DateTime.now();
     stateSubject.add(RecordingState.recording);
     return true;
@@ -37,8 +40,11 @@ class VideoRecorder extends IVideoRecorder {
     if (_mediaRecorder == null || _recordStartTime == null) {
       throw Exception('MediaRecorder is not started');
     }
+    final recordId = _recordId;
+    if (recordId == null) {
+      throw Exception('RecordId is not set');
+    }
     stateSubject.add(RecordingState.stop);
-    final recordId = DateTime.now().millisecondsSinceEpoch.toString();
     final String videoBlobUrl = await _mediaRecorder?.stop();
     final duration = DateTime.now().difference(_recordStartTime!);
     onRecorded(RTCRecordResult(

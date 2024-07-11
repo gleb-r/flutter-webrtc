@@ -41,7 +41,8 @@ class VideoRecorderFactory(
 
     fun startRecording(
         videoTrack: VideoTrack,
-        dirPath: String,
+        recordId: String,
+        path: String,
         withAudio: Boolean,
         isDirect: Boolean,
         flutterResult: AnyThreadResult
@@ -62,7 +63,8 @@ class VideoRecorderFactory(
         CoroutineScope(Dispatchers.IO).launch {
             val videoRecorder = VideoRecorder(
                 videoTrack = videoTrack,
-                dirPath = dirPath,
+                recordId = recordId,
+                path = path,
                 audioInterceptor = interceptor,
                 withAudio = withAudio,
                 directAudio = isDirect,

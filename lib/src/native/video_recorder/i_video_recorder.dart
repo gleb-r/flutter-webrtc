@@ -12,7 +12,8 @@ abstract class IVideoRecorder {
   });
 
   Future<bool> start({
-    required String dirPath,
+    required String recordId,
+    required String path,
     required MediaStream mediaStream,
     required bool enableAudio,
   });

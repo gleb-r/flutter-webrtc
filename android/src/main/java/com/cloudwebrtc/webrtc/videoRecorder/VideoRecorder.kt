@@ -2,8 +2,6 @@ package com.cloudwebrtc.webrtc.videoRecorder
 
 import android.content.ContentValues
 import android.content.Context
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import com.cloudwebrtc.webrtc.detection.DetectionResult
 import com.cloudwebrtc.webrtc.detection.MotionDetection
@@ -11,16 +9,14 @@ import com.cloudwebrtc.webrtc.record.AudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.record.FirstFrameListener
 import com.cloudwebrtc.webrtc.record.VideoFileRenderer
 import com.cloudwebrtc.webrtc.utils.EglUtils
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.util.PathUtils.getFilesDir
 import org.webrtc.VideoTrack
 import java.io.File
-import java.util.UUID
 import kotlin.random.Random
 
 public class VideoRecorder(
     private val videoTrack: VideoTrack,
-    private val dirPath: String,
+    private val path: String,
+    private val recordId: String,
     private val audioInterceptor: AudioSamplesInterceptor?,
     private val directAudio: Boolean,
     private val withAudio: Boolean,
@@ -29,10 +25,9 @@ public class VideoRecorder(
     private val onStateChange: (RecordState) -> Unit,
 
     ) : FirstFrameListener, MotionDetection.Listener {
-    private val recordId by lazy { UUID.randomUUID().toString() }
 
     private val videoFile: File by lazy {
-        File("$dirPath/$recordId.mp4")
+        File(path)
     }
     private var firstFrameTime: Long? = null
     private var frameRotation = 0

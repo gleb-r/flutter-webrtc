@@ -32,10 +32,9 @@ public class VideoRecorder:NSObject {
     private let eventChannel: FlutterEventChannel
     private var eventSink :FlutterEventSink?
     private let motionDetection: MotionDetection
-    private var videoPathUrl: URL?
     private var rotation = RTCVideoRotation._0
     private var enableAudio = false
-    private var dirPath: String?
+    private var path: String?
     private var shouldStop = false
     private var detectionData: DetectionData?
     
@@ -65,7 +64,8 @@ public class VideoRecorder:NSObject {
     
     @objc public func startCapure(videoTrack: RTCVideoTrack,
                                   audioTrack: RTCAudioTrack?,
-                                  dirPath:String,
+                                  recordId : String,
+                                  path:String,
                                   enableAudio: Bool,
                                   result: FlutterResult?) {
         
@@ -74,16 +74,23 @@ public class VideoRecorder:NSObject {
             result?(false)
             return
         }
+        guard let pathUrl = URL(string: path) else {
+            log.e("Can't start, path is invalid")
+            sendError(FlutterError(code: "Start error",
+                                   message: "Path is invalid",
+                                   details: nil))
+            result?(false)
+            return
+        }
         result?(true)
         self.videoTrack = videoTrack
         self.audioTrack = audioTrack
         self.enableAudio = enableAudio
-        let recordId = ProcessInfo.processInfo.globallyUniqueString
-        let videoPath = URL(fileURLWithPath: dirPath).appendingPathComponent(recordId).appendingPathExtension("mp4")
-        self.dirPath = dirPath
-        log.d("Video path: \(videoPath.path)")
+        self.recordId = recordId
+        self.path = path
+        log.d("Video path: \(path)")
         do {
-            self.mediaWriter = try AVAssetWriter.init(outputURL: videoPath, fileType: AVFileType.mp4)
+            self.mediaWriter = try AVAssetWriter.init(outputURL: pathUrl, fileType: AVFileType.mp4)
         } catch {
             self.sendError( FlutterError(code: "failed to create writer",
                                          message: error.localizedDescription,
@@ -92,7 +99,6 @@ public class VideoRecorder:NSObject {
             return
         }
         videoTrack.add(self)
-        self.videoPathUrl = videoPath
         self.recordId = recordId
         self.state = .start
     }
@@ -115,7 +121,7 @@ public class VideoRecorder:NSObject {
         }
         log.d("Stop rec inner")
         state = .stop
-        guard let videoUrl = self.videoPathUrl, let recordId = self.recordId else {
+        guard let videoPath = self.path, let recordId = self.recordId else {
             log.e("Can't stop, Video path or recordId is nil")
             sendError(FlutterError(code: "Stop error",
                                    message: "Video path is nil",
@@ -163,7 +169,7 @@ public class VideoRecorder:NSObject {
             detectionData?.duration = durationMs
             let recResult = RecordingResult(
                 recordId: recordId,
-                videoPath: videoUrl.path,
+                videoPath: videoPath,
                 durationMs: durationMs,
                 rotationDegree: self.rotation.rawValue,
                 detectionData: self.detectionData
@@ -189,7 +195,9 @@ public class VideoRecorder:NSObject {
     
     private func restartRecording() {
         guard let videoTrack = self.videoTrack,
-              let dirPath = self.dirPath
+              let path = self.path,
+              let recordId = self.recordId
+              
         else {
             log.e("Can't restart, videoTrack is nil")
             return
@@ -210,7 +218,8 @@ public class VideoRecorder:NSObject {
         closeAudioSink()
         startCapure(videoTrack: videoTrack,
                     audioTrack: audioTrack,
-                    dirPath: dirPath,
+                    recordId: recordId,
+                    path: path,
                     enableAudio: self.enableAudio,
                     result: nil)
         
@@ -231,9 +240,8 @@ public class VideoRecorder:NSObject {
         self.mediaWriter = nil
         self.adapter = nil
         self.firstFrameTime = nil
-        self.videoPathUrl = nil
+        self.path = nil
         self.recordId = nil
-        self.dirPath = nil
         self.state = .idle
         self.shouldStop = false
         self.detectionData = nil

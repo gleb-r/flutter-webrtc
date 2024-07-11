@@ -13,12 +13,14 @@ class VideoRecorder extends IVideoRecorder {
 
   @override
   Future<bool> start({
-    required String dirPath,
+    required String recordId,
+    required String path,
     required MediaStream mediaStream,
     required bool enableAudio,
   }) async {
     final result = await WebRTC.invokeMethod<bool, String>('startRecordVideo', {
-      'dirPath': dirPath,
+      'recordId': recordId,
+      'path': path,
       'streamId': mediaStream.id,
       'enableAudio': enableAudio,
     });
@@ -37,7 +39,6 @@ class VideoRecorder extends IVideoRecorder {
 
   late final _eventChannel = EventChannel('FlutterWebRTC/detectionOnVideo');
   StreamSubscription? _eventsSubscription;
-
 
   @override
   Future<void> dispose() async {
@@ -69,6 +70,4 @@ class VideoRecorder extends IVideoRecorder {
       }
     });
   }
-
-
 }
