@@ -6,8 +6,7 @@ import 'factory_impl.dart';
 import 'media_stream_track_impl.dart';
 
 class MediaStreamNative extends MediaStream {
-  MediaStreamNative(String streamId, String ownerTag)
-      : super(streamId, ownerTag);
+  MediaStreamNative(super.streamId, super.ownerTag);
 
   factory MediaStreamNative.fromMap(Map<dynamic, dynamic> map) {
     return MediaStreamNative(map['streamId'], map['ownerTag'])
