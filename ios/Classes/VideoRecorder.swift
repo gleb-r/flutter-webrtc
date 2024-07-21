@@ -174,6 +174,7 @@ public class VideoRecorder:NSObject {
             )
             self.disposeRecording()
         }
+        result(true)
     }
     
     private func stopWithoutSaving() async -> Void {
