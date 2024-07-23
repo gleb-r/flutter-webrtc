@@ -43,7 +43,7 @@ class DetectionData {
 
   factory DetectionData.fromJson(Map<String, dynamic> json) {
     return DetectionData(
-      rawFrames: Map<String, List<String>>.of(json['f']),
+      rawFrames: Map.from(json['f']),
       aspect: json['a'],
       xSqCount: json['x'],
       ySqCount: json['y'],
