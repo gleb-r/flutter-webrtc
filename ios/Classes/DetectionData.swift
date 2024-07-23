@@ -44,11 +44,11 @@ struct DetectionData {
     func toMap() -> [String: Any] {
         let framesJson = frames.mapValues({squares in squares.map({sq in sq.toString()})})
         return [
-            "f": framesJson,
+            "frames": framesJson,
             "a": NSNumber(value: aspect),
             "x": NSNumber(value: xSqCount),
             "y": NSNumber(value: ySqCount),
-            "i": NSNumber(value: frameIntervalMs),
+            "ft": NSNumber(value: frameIntervalMs),
             "d": NSNumber(value: duration)
         ]
     }

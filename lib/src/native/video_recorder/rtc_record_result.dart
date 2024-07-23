@@ -43,21 +43,21 @@ class DetectionData {
 
   factory DetectionData.fromJson(Map<String, dynamic> json) {
     return DetectionData(
-      rawFrames: Map.from(json['f']) ,
+      rawFrames: Map.from(json['frames']) ,
       aspect: json['a'],
       xSqCount: json['x'],
       ySqCount: json['y'],
-      frameIntervalMs: json['i'],
+      frameIntervalMs: json['ft'],
       durationMs: json['d'],
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'f': rawFrames,
+        'frames': rawFrames,
         'a': aspect,
         'x': xSqCount,
         'y': ySqCount,
-        'i': frameIntervalMs,
+        'ft': frameIntervalMs,
         'd': durationMs,
       };
 

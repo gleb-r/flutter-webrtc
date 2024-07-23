@@ -14,11 +14,11 @@ public data class DetectionData(
 
     fun toMap(): Map<String, Any> {
         return mapOf(
-            "f" to frames,
+            "frames" to frames,
             "a" to aspect,
             "x" to xCount,
             "y" to yCount,
-            "i" to frameInterval,
+            "ft" to frameInterval,
             "d" to duration
         )
     }
