@@ -29,7 +29,6 @@ class RTCRecordResult {
 }
 
 class DetectionData {
-
   DetectionData({
     required this.rawFrames,
     required this.aspect,
@@ -38,12 +37,13 @@ class DetectionData {
     required this.frameIntervalMs,
     required this.durationMs,
   });
+
   factory DetectionData.fromString(String serialized) =>
       DetectionData.fromJson(jsonDecode(serialized));
 
   factory DetectionData.fromJson(Map<String, dynamic> json) {
     return DetectionData(
-      rawFrames: json['f'],
+      rawFrames: Map<String, List<String>>.of(json['f']),
       aspect: json['a'],
       xSqCount: json['x'],
       ySqCount: json['y'],
@@ -61,7 +61,7 @@ class DetectionData {
         'd': durationMs,
       };
 
-  final Map<String, List<dynamic>> rawFrames;
+  final Map<String, List<String>> rawFrames;
   final double aspect;
   final int xSqCount;
   final int ySqCount;
