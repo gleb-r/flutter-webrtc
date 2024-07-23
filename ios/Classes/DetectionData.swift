@@ -18,17 +18,17 @@ struct DetectionData {
     let frameIntervalMs: Int
     var duration: Int = 0
     
-    init(detectionResult: DetectionResult,
+    init(detectionFrame: DetectionFrame,
          frameIndex: Int,
          frameIntervalMs: Int) {
-        self.frames = ["\(frameIndex)": detectionResult.detectedList]
-        self.aspect = detectionResult.aspectRatio
-        self.xSqCount = detectionResult.xCount
-        self.ySqCount = detectionResult.yCount
+        self.frames = ["\(frameIndex)": detectionFrame.detectedList]
+        self.aspect = detectionFrame.aspectRatio
+        self.xSqCount = detectionFrame.xCount
+        self.ySqCount = detectionFrame.yCount
         self.frameIntervalMs = frameIntervalMs        
     }
     
-    mutating func addDetection(detection: DetectionResult, frameIndex: Int) throws  {
+    mutating func addDetection(detection: DetectionFrame, frameIndex: Int) throws  {
         guard xSqCount == detection.xCount,
               ySqCount == detection.yCount,
               aspect == detection.aspectRatio else {

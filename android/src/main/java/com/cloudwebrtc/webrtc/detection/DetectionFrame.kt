@@ -1,6 +1,6 @@
 package com.cloudwebrtc.webrtc.detection
 
-data class DetectionResult(
+data class DetectionFrame(
     val detectedList: List<Square>,
     val aspectRatio: Double,
     val xCount: Int,

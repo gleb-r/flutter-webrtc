@@ -1,5 +1,5 @@
 //
-//  DetectionResult.swift
+//  DetectionFrame.swift
 //  flutter_webrtc
 //
 //  Created by MacBook 16 on 29.05.2022.
@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct DetectionResult {
+struct DetectionFrame {
     let detectedList: [Square]
     let aspectRatio: Double
     let xCount: Int

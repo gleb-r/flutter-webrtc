@@ -21,7 +21,6 @@ import androidx.annotation.RequiresApi;
 import com.cloudwebrtc.webrtc.audio.AudioDeviceKind;
 import com.cloudwebrtc.webrtc.audio.AudioSwitchManager;
 import com.cloudwebrtc.webrtc.detection.DetectionRequest;
-import com.cloudwebrtc.webrtc.detection.DetectionResult;
 import com.cloudwebrtc.webrtc.detection.MotionDetection;
 import com.cloudwebrtc.webrtc.audio.AudioUtils;
 import com.cloudwebrtc.webrtc.record.AudioChannel;

@@ -37,7 +37,7 @@ class PixelDetection {
         buffer: VideoFrame.I420Buffer,
         rotation: Int,
         detectionLevel: Int,
-        result: (DetectionResult) -> Unit
+        result: (DetectionFrame) -> Unit
     ) {
         val height = buffer.height
         val width = buffer.width
@@ -78,7 +78,7 @@ class PixelDetection {
         }
         buffer.release()
         previousMatrix = currentMatrix
-        result(DetectionResult(
+        result(DetectionFrame(
             detectedList = detectionList,
             aspectRatio =  aspectRatio,
             xCount =  xCount(rotation),

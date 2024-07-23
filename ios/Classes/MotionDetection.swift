@@ -129,7 +129,7 @@ public class MotionDetection: NSObject, RTCVideoRenderer {
         }
     }
     
-    private func sendDetectionResult(_ result: DetectionResult) {
+    private func sendDetectionResult(_ result: DetectionFrame) {
         guard self.active else { return }
         let param:[String : Any] = result.toMap()
         DispatchQueue.main.async { [weak self] in
@@ -158,7 +158,7 @@ extension MotionDetection: FlutterStreamHandler {
 }
 
 protocol MotionDetectionListener {
-    func onDetected(result: DetectionResult)
+    func onDetected(result: DetectionFrame)
 }
 
 

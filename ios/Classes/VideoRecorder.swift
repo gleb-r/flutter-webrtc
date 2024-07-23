@@ -406,7 +406,7 @@ enum RecorderState {
 
 
 extension VideoRecorder: MotionDetectionListener {
-    func onDetected(result: DetectionResult) {
+    func onDetected(result: DetectionFrame) {
         guard let firstFrameTime = firstFrameTime else {
             return
         }
@@ -414,7 +414,7 @@ extension VideoRecorder: MotionDetectionListener {
         let frameIndex = Int((CACurrentMediaTime() - firstFrameTime) * 1000) / frameIntervalMs
         if detectionData == nil {
             detectionData = DetectionData.init(
-                detectionResult: result,
+                detectionFrame: result,
                 frameIndex: frameIndex,
                 frameIntervalMs: frameIntervalMs
             )

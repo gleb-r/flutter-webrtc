@@ -43,7 +43,7 @@ public class PixelDetection:NSObject {
     func detect(buffer: RTCI420BufferProtocol,
                 rotation: RTCVideoRotation,
                 detectionLevel: Int,
-                result: @escaping ((DetectionResult) -> Void)) {
+                result: @escaping ((DetectionFrame) -> Void)) {
         let width = Int(buffer.width)
         let heigth = Int(buffer.height)
         let detectionDiff = getDiff(level: detectionLevel)
@@ -81,7 +81,7 @@ public class PixelDetection:NSObject {
         }
         prevMatrix = currentMatrix
         
-        result(DetectionResult(detectedList: squareList,
+        result(DetectionFrame(detectedList: squareList,
                                aspectRatio: aspectRatio,
                                xCount: xCount,
                                yCount: yCount))

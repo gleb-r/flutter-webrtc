@@ -105,7 +105,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
         }
     }
 
-    private fun sendDetection(detected: DetectionResult) {
+    private fun sendDetection(detected: DetectionFrame) {
         if (!isActive) return
         val params = detected.toMap()
         Handler(Looper.getMainLooper()).post {
@@ -132,7 +132,7 @@ class MotionDetection(binaryMessenger: BinaryMessenger) :
     }
 
     interface Listener {
-        fun onDetect(detection: DetectionResult)
+        fun onDetect(detection: DetectionFrame)
     }
 
 }

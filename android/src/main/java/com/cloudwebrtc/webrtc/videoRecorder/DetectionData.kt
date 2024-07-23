@@ -1,7 +1,7 @@
 package com.cloudwebrtc.webrtc.videoRecorder
 
 import android.util.Log
-import com.cloudwebrtc.webrtc.detection.DetectionResult
+import com.cloudwebrtc.webrtc.detection.DetectionFrame
 
 public data class DetectionData(
     val frames: MutableMap<String, List<String>>,
@@ -24,7 +24,7 @@ public data class DetectionData(
     }
 
 
-    constructor(detectionResult: DetectionResult, frameIndex: String, frameInterval: Int) : this(
+    constructor(detectionResult: DetectionFrame, frameIndex: String, frameInterval: Int) : this(
         frames = mutableMapOf(frameIndex to detectionResult.detectedList.map { it.toString() }),
         aspect = detectionResult.aspectRatio,
         xCount = detectionResult.xCount,
@@ -32,7 +32,7 @@ public data class DetectionData(
         frameInterval = frameInterval
     )
 
-    fun addFrame(frameIndex: String, detectionResult: DetectionResult) {
+    fun addFrame(frameIndex: String, detectionResult: DetectionFrame) {
         if (detectionResult.xCount != xCount || detectionResult.yCount != yCount) {
             Log.e("Motion detection","DetectionData: xCount or yCount not match")
             return

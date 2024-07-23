@@ -3,7 +3,7 @@ package com.cloudwebrtc.webrtc.videoRecorder
 import android.content.ContentValues
 import android.content.Context
 import android.util.Log
-import com.cloudwebrtc.webrtc.detection.DetectionResult
+import com.cloudwebrtc.webrtc.detection.DetectionFrame
 import com.cloudwebrtc.webrtc.detection.MotionDetection
 import com.cloudwebrtc.webrtc.record.AudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.record.FirstFrameListener
@@ -91,7 +91,7 @@ public class VideoRecorder(
         onStateChange(RecordState.recording)
     }
 
-    override fun onDetect(detection: DetectionResult) {
+    override fun onDetect(detection: DetectionFrame) {
         if (detection.detectedList.isEmpty()) return
         firstFrameTime?.let { time ->
             val frameIndex =
