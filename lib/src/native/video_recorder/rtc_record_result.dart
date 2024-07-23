@@ -43,7 +43,7 @@ class DetectionData {
 
   factory DetectionData.fromJson(Map<String, dynamic> json) {
     return DetectionData(
-      rawFrames: jsonDecode(jsonEncode(json['f'])) as Map<String, List<String>>,
+      rawFrames: Map.from(json['f']) ,
       aspect: json['a'],
       xSqCount: json['x'],
       ySqCount: json['y'],
@@ -61,7 +61,7 @@ class DetectionData {
         'd': durationMs,
       };
 
-  final Map<String, List<String>> rawFrames;
+  final Map<String, dynamic> rawFrames;
   final double aspect;
   final int xSqCount;
   final int ySqCount;
