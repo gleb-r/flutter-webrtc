@@ -1,6 +1,20 @@
 # Changelog
 
 --------------------------------------------
+[0.12.0+hotfix.1] - 2024-10-18
+
+* [macOS] fix compilation error for macOS.
+
+[0.12.0] - 2024-10-16
+
+* [iOS/macOS] Fix memory leak for iOS/macOS.
+* [iOS] Support MultiCam Session for iOS.
+
+[0.11.7] - 2024-09-04
+
+* [Web] Bump dart_webrtc to 1.4.9.
+* [Web] Bump web version to 1.0.0.
+
 [0.11.6+hotfix.1] - 2024-08-07
 
 * [iOS] Fixed PlatformView not rendering after resuming from background.
