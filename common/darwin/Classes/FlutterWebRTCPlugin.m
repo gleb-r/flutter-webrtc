@@ -239,7 +239,8 @@ MotionDetection* motionDetection;
 #endif
 }
 
-- (void)initialize:(NSArray*)networkIgnoreMask {
+- (void)initialize:(NSArray*)networkIgnoreMask
+bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
     // RTCSetMinDebugLogLevel(RTCLoggingSeverityVerbose);
     if (!_peerConnectionFactory) {
         VideoDecoderFactory* decoderFactory = [[VideoDecoderFactory alloc] init];
@@ -248,8 +249,17 @@ MotionDetection* motionDetection;
         VideoEncoderFactorySimulcast* simulcastFactory =
             [[VideoEncoderFactorySimulcast alloc] initWithPrimary:encoderFactory fallback:encoderFactory];
 
-        _peerConnectionFactory = [[RTCPeerConnectionFactory alloc] initWithEncoderFactory:simulcastFactory
-                                                                           decoderFactory:decoderFactory];
+        if (bypassVoiceProcessing) {
+          _peerConnectionFactory =
+              [[RTCPeerConnectionFactory alloc] initWithBypassVoiceProcessing:YES
+                                                               encoderFactory:simulcastFactory
+                                                               decoderFactory:decoderFactory
+                                                        audioProcessingModule:nil];
+        } else {
+          _peerConnectionFactory =
+              [[RTCPeerConnectionFactory alloc] initWithEncoderFactory:simulcastFactory
+                                                        decoderFactory:decoderFactory];
+        }
 
         RTCPeerConnectionFactoryOptions *options = [[RTCPeerConnectionFactoryOptions alloc] init];
         for (NSString* adapter in networkIgnoreMask)
@@ -281,11 +291,15 @@ MotionDetection* motionDetection;
   if ([@"initialize" isEqualToString:call.method]) {
     NSDictionary* argsMap = call.arguments;
     NSDictionary* options = argsMap[@"options"];
+    BOOL enableBypassVoiceProcessing = NO;
+    if(options[@"bypassVoiceProcessing"] != nil){
+        enableBypassVoiceProcessing = ((NSNumber*)options[@"bypassVoiceProcessing"]).boolValue;
+    }
     NSArray* networkIgnoreMask = [NSArray new];
     if (options[@"networkIgnoreMask"] != nil) {
       networkIgnoreMask = ((NSArray*)options[@"networkIgnoreMask"]);
     }
-    [self initialize:networkIgnoreMask];
+    [self initialize:networkIgnoreMask bypassVoiceProcessing:enableBypassVoiceProcessing];
     result(@"");
   } else if ([@"createPeerConnection" isEqualToString:call.method]) {
     NSDictionary* argsMap = call.arguments;
@@ -664,6 +678,7 @@ MotionDetection* motionDetection;
           shouldCallResult = NO;
           stopHandler(^{
             NSLog(@"video capturer stopped, trackID = %@", videoTrack.trackId);
+            self.videoCapturer = nil;
             result(nil);
           });
           [self.videoCapturerStopHandlers removeObjectForKey:videoTrack.trackId];
