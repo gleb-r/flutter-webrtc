@@ -87,8 +87,55 @@ public class RtcMotionDetection: NSObject, RTCVideoRenderer {
     }
 
     private func convertToCMSampleBuffer(buffer: RTCI420BufferProtocol) -> CMSampleBuffer {
-        // Placeholder function to convert RTCI420BufferProtocol to CMSampleBuffer
-        // You need to implement this conversion or adjust the motionDetection to accept buffer directly
-        fatalError("Conversion to CMSampleBuffer not implemented")
+        var pixelBuffer: CVPixelBuffer?
+        let attributes: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+        let width = Int(buffer.width)
+        let height = Int(buffer.height)
+        CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_420YpCbCr8BiPlanarFullRange, attributes as CFDictionary, &pixelBuffer)
+        guard let pixelBufferUnwrapped = pixelBuffer else {
+            fatalError("Failed to create pixel buffer")
+        }
+        CVPixelBufferLockBaseAddress(pixelBufferUnwrapped, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pixelBufferUnwrapped, .readOnly) }
+
+        // Copy Y plane
+        let yBaseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBufferUnwrapped, 0)
+        let yStride = CVPixelBufferGetBytesPerRowOfPlane(pixelBufferUnwrapped, 0)
+        for y in 0..<height {
+            memcpy(yBaseAddress?.advanced(by: y * yStride), buffer.dataY.advanced(by: y * Int(buffer.strideY)), width)
+        }
+
+        // Copy U and V planes
+        // Copy U and V planes
+        let uvBaseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBufferUnwrapped, 1)
+        let uStride = Int(buffer.strideU)
+        let vStride = Int(buffer.strideV)
+        let uvStride = CVPixelBufferGetBytesPerRowOfPlane(pixelBufferUnwrapped, 1)
+        for y in 0..<height / 2 {
+            for x in 0..<width / 2 {
+                let uValue = buffer.dataU.advanced(by: y * uStride + x).pointee
+                let vValue = buffer.dataV.advanced(by: y * vStride + x).pointee
+                uvBaseAddress?.advanced(by: y * uvStride + x * 2).storeBytes(of: uValue, as: UInt8.self)
+                uvBaseAddress?.advanced(by: y * uvStride + x * 2 + 1).storeBytes(of: vValue, as: UInt8.self)
+            }
+        }
+
+        var sampleBuffer: CMSampleBuffer?
+        var timingInfo = CMSampleTimingInfo(duration: CMTime.invalid, presentationTimeStamp: CMTime.zero, decodeTimeStamp: CMTime.invalid)
+        var formatDescription: CMVideoFormatDescription?
+        CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixelBufferUnwrapped, formatDescriptionOut: &formatDescription)
+        guard let formatDesc = formatDescription else {
+            fatalError("Failed to create format description")
+        }
+        CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixelBufferUnwrapped, formatDescription: formatDesc, sampleTiming: &timingInfo, sampleBufferOut: &sampleBuffer)
+
+        guard let sampleBufferUnwrapped = sampleBuffer else {
+            fatalError("Failed to create CMSampleBuffer")
+        }
+
+        return sampleBufferUnwrapped
     }
 }
