@@ -195,7 +195,7 @@ static FlutterWebRTCPlugin *sharedSingleton;
 }
 
 VideoRecorder *videoRecorder;
-MotionDetection* motionDetection;
+RtcMotionDetection* motionDetection;
 
 
 - (void)detachFromEngineForRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
@@ -455,7 +455,7 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
           result([FlutterError errorWithCode:@"Can't find video track" message:nil details:nil]);
         } else {
             if (motionDetection == nil) {
-                motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
+                motionDetection = [[RtcMotionDetection alloc] initWithBinaryMessenger:_messenger];
                 [motionDetection setVideoTrackWithVideoTrack:videoTrack];
             }
             if (videoRecorder == nil) {
@@ -511,7 +511,7 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
                 result(nil);
                 return;
             }
-            motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
+            motionDetection = [[RtcMotionDetection alloc] initWithBinaryMessenger:_messenger];
         }
         if (videoTrack != nil) {
             [motionDetection setVideoTrackWithVideoTrack:videoTrack];

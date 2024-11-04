@@ -31,7 +31,7 @@ public class VideoRecorder:NSObject {
     private var firstFrameTime: CFTimeInterval?
     private let eventChannel: FlutterEventChannel
     private var eventSink :FlutterEventSink?
-    private let motionDetection: MotionDetection
+    private let motionDetection: RtcMotionDetection
     private var rotation = RTCVideoRotation._0
     private var enableAudio = false
     private var path: String?
@@ -52,7 +52,7 @@ public class VideoRecorder:NSObject {
     
     
     
-    @objc public init(binaryMessenger: FlutterBinaryMessenger, motionDetection: MotionDetection) {
+    @objc public init(binaryMessenger: FlutterBinaryMessenger, motionDetection: RtcMotionDetection) {
         eventChannel = FlutterEventChannel(
             name: "FlutterWebRTC/detectionOnVideo",
             binaryMessenger: binaryMessenger)
@@ -138,7 +138,7 @@ public class VideoRecorder:NSObject {
             disposeRecording()
             return
         }
-        self.motionDetection.removeLister()
+        self.motionDetection.removeListener()
         Task(priority: .background) { [weak self] in
             guard let self = self else { return }
             self.videoTrack?.remove(self)
@@ -180,7 +180,7 @@ public class VideoRecorder:NSObject {
     private func stopWithoutSaving() async -> Void {
         log.d("Stop without saving")
         videoTrack?.remove(self)
-        motionDetection.removeLister()
+        motionDetection.removeListener()
         videoWriterInput?.markAsFinished()
         audioWriterInput?.markAsFinished()
         await mediaWriter?.finishWriting()
@@ -403,7 +403,6 @@ enum RecorderState {
          capturing,
          stop
 }
-
 
 extension VideoRecorder: MotionDetectionListener {
     func onDetected(result: DetectionFrame) {
