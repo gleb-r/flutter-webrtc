@@ -1,6 +1,6 @@
 package com.cloudwebrtc.webrtc.detection
 
-import org.webrtc.VideoFrame
+
 import java.nio.ByteBuffer
 import kotlin.math.abs
 
@@ -34,13 +34,14 @@ class PixelDetection {
 
 
     fun detect(
-        buffer: VideoFrame.I420Buffer,
+        buffer: ByteBuffer,
         rotation: Int,
         detectionLevel: Int,
+        width: Int,
+        height: Int,
+        strideY: Int,
         result: (DetectionFrame) -> Unit
     ) {
-        val height = buffer.height
-        val width = buffer.width
         val detectionDiff = getDetectionDiff(detectionLevel)
         sizeNotChanged = width == prevWidth && height == prevHeight && rotation == prevRotation
         if (!sizeNotChanged) {
@@ -60,8 +61,8 @@ class PixelDetection {
         for (y in 0 until yBoxes) {
             for (x in 0 until xBoxes) {
                 val luma = getBoxAverageLuma(
-                    buffer = buffer.dataY,
-                    rowStride = buffer.strideY,
+                    buffer = buffer,
+                    rowStride = strideY,
                     xBoxNum = x,
                     yBoxNum = y
                 )
@@ -76,7 +77,6 @@ class PixelDetection {
                 }
             }
         }
-        buffer.release()
         previousMatrix = currentMatrix
         result(DetectionFrame(
             detectedList = detectionList,
@@ -130,3 +130,4 @@ class PixelDetection {
     }
 
 }
+

@@ -22,7 +22,7 @@ import androidx.annotation.RequiresApi;
 import com.cloudwebrtc.webrtc.audio.AudioDeviceKind;
 import com.cloudwebrtc.webrtc.audio.AudioSwitchManager;
 import com.cloudwebrtc.webrtc.detection.DetectionRequest;
-import com.cloudwebrtc.webrtc.detection.MotionDetection;
+import com.cloudwebrtc.webrtc.detection.RtcMotionDetection;
 import com.cloudwebrtc.webrtc.audio.AudioUtils;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
 import com.cloudwebrtc.webrtc.record.FrameCapturer;
@@ -121,7 +121,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   private CustomVideoEncoderFactory videoEncoderFactory;
 
   private CustomVideoDecoderFactory videoDecoderFactory;
-  private MotionDetection motionDetection;
+  private RtcMotionDetection motionDetection;
 
   private VideoRecorderFactory videoRecorderFactory;
 
@@ -725,7 +725,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                     }
                 }
                 if (motionDetection == null) {
-                    motionDetection = new MotionDetection(messenger);
+                    motionDetection = new RtcMotionDetection(messenger);
                     VideoTrack loaclVideoTrack = getLocalVideoTrack(mediaStreamId);
                     if (loaclVideoTrack != null) {
                       motionDetection.setVideoTrack(loaclVideoTrack);
@@ -786,7 +786,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
             }
             case "motionDetection": {
                 if (motionDetection == null) {
-                    motionDetection = new MotionDetection(messenger);
+                    motionDetection = new RtcMotionDetection(messenger);
                     VideoTrack track = getLocalVideoTrack();
                     if (track != null) {
                       motionDetection.setVideoTrack(track);

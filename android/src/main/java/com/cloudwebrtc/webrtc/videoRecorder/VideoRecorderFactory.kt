@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.cloudwebrtc.webrtc.detection.MotionDetection
+import com.cloudwebrtc.webrtc.detection.RtcMotionDetection
 import com.cloudwebrtc.webrtc.record.OutputAudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult
 import io.flutter.plugin.common.BinaryMessenger
@@ -17,7 +17,7 @@ import org.webrtc.audio.JavaAudioDeviceModule
 
 class VideoRecorderFactory(
     binaryMessenger: BinaryMessenger,
-    private val motionDetection: MotionDetection,
+    private val motionDetection: RtcMotionDetection,
     private val audioDeviceModule: JavaAudioDeviceModule,
     private val applicationContext: Context
 ) : EventChannel.StreamHandler {

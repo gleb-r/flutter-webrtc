@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import com.cloudwebrtc.webrtc.detection.DetectionFrame
 import com.cloudwebrtc.webrtc.detection.MotionDetection
+import com.cloudwebrtc.webrtc.detection.RtcMotionDetection
 import com.cloudwebrtc.webrtc.record.AudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.record.FirstFrameListener
 import com.cloudwebrtc.webrtc.record.VideoFileRenderer
@@ -20,7 +21,7 @@ public class VideoRecorder(
     private val audioInterceptor: AudioSamplesInterceptor?,
     private val directAudio: Boolean,
     private val withAudio: Boolean,
-    private val motionDetection: MotionDetection,
+    private val motionDetection: RtcMotionDetection,
     private val applicationContext: Context,
     private val onStateChange: (RecordState) -> Unit,
 
