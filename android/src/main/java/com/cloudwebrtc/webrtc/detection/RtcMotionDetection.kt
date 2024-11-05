@@ -72,20 +72,8 @@ class RtcMotionDetection(binaryMessenger: BinaryMessenger) : VideoSink {
 
     override fun onFrame(videoFrame: VideoFrame) {
         val i420Buffer = videoFrame.buffer.toI420() ?: return
-        val yPlane = i420Buffer.dataY
-        val uPlane = i420Buffer.dataU
-        val vPlane = i420Buffer.dataV
-
-        val ySize = i420Buffer.height * i420Buffer.strideY
-        val uSize = (i420Buffer.height / 2) * i420Buffer.strideU
-        val vSize = (i420Buffer.height / 2) * i420Buffer.strideV
-
-        val byteBuffer = ByteBuffer.allocateDirect(ySize + uSize + vSize)
-        byteBuffer.put(yPlane)
-        byteBuffer.put(uPlane)
-        byteBuffer.put(vPlane)
         motionDetection.processFrame(
-            byteBuffer,
+            i420Buffer.dataY,
             i420Buffer.width,
             i420Buffer.height,
             i420Buffer.strideY,

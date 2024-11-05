@@ -38,12 +38,13 @@ public class PixelDetection: NSObject {
         }
     }
 
-    func detect(buffer: CVPixelBuffer,
+    func detect(buffer: UnsafePointer<UInt8>,
                 rotation: Int,
                 detectionLevel: Int,
+                width: Int,
+                height: Int,
+                strideY: Int,
                 result: @escaping ((DetectionFrame) -> Void)) {
-        let width = CVPixelBufferGetWidth(buffer)
-        let height = CVPixelBufferGetHeight(buffer)
         let detectionDiff = getDiff(level: detectionLevel)
         sizeNotChanged = width == prevWidth && height == prevHeight && prevRotation == rotation
         if !sizeNotChanged {
@@ -59,7 +60,7 @@ public class PixelDetection: NSObject {
         var squareList = [Square]()
         for y in 0..<yBoxes {
             for x in 0..<xBoxes {
-                let luma = averageBoxLuma(pixelBuffer: buffer, xBoxNum: x, yBoxNum: y)
+                let luma = averageBoxLuma(yData: buffer, rowStride: strideY, xBoxNum: x, yBoxNum: y)
                 currentMatrix[y][x] = luma
                 if sizeNotChanged, let prevMatrix = prevMatrix {
                     let prevLuma = prevMatrix[y][x]
@@ -85,15 +86,11 @@ public class PixelDetection: NSObject {
         prevMatrix = nil
     }
 
-    private func averageBoxLuma(pixelBuffer: CVPixelBuffer, xBoxNum: Int, yBoxNum: Int) -> Int {
-        CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
-
-        guard let baseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0) else {
-            return 0
-        }
-
-        let rowStride = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0)
+    private func averageBoxLuma(
+        yData: UnsafePointer<UInt8>,
+        rowStride: Int,
+        xBoxNum: Int,
+        yBoxNum: Int) -> Int {
         var color = 0
         let pixelsInBox = xBoxSize * yBoxSize
         let xOffset = yBoxNum * yBoxSize * rowStride
@@ -101,7 +98,7 @@ public class PixelDetection: NSObject {
         for y in 0..<yBoxSize {
             for x in 0..<xBoxSize {
                 let index = yOffset + y * rowStride + xOffset + x
-                color += Int(baseAddress.load(fromByteOffset: index, as: UInt8.self))
+                color += Int(yData[index])
             }
         }
         return color / pixelsInBox

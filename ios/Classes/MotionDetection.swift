@@ -15,7 +15,6 @@ public class MotionDetection: NSObject {
 
     private lazy var pixelDetection = { PixelDetection() }()
     private var detectionLevel = 0
-    private var frameSize: CGSize?
     private let eventChannel: FlutterEventChannel
     private var eventSink: FlutterEventSink?
     private var previosTime = CACurrentMediaTime()
@@ -65,8 +64,11 @@ public class MotionDetection: NSObject {
         self.listener = nil
     }
 
-    func processFrame(_ sampleBuffer: CMSampleBuffer) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+    func processFrame(buffer: UnsafePointer<UInt8>,
+                      rotation: Int,
+                      width: Int,
+                      height: Int,
+                      strideY: Int) {
         let currentTime = CACurrentMediaTime()
         if (currentTime - previosTime > CFTimeInterval(detectionInterval)) {
             previosTime = currentTime
@@ -74,9 +76,12 @@ public class MotionDetection: NSObject {
             DispatchQueue.global(qos: .background).async { [weak self] in
                 guard let self = self else { return }
                 self.pixelDetection.detect(
-                    buffer: pixelBuffer,
-                    rotation: 0,  // Assuming no rotation for this example
+                    buffer: buffer,
+                    rotation: rotation,
                     detectionLevel: self.detectionLevel,
+                    width: width,
+                    height: height,
+                    strideY: strideY,
                     result: { [weak self] detected in
                         self?.sendDetectionResult(detected)
                         if !detected.detectedList.isEmpty {
