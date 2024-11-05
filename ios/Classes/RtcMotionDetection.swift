@@ -7,6 +7,8 @@ public class RtcMotionDetection: NSObject, RTCVideoRenderer {
     private var videoTrack: RTCVideoTrack?
     private let log = Log(subsystem: "RtcMotionDetection", category: "")
     private var active = false
+    private var previousTime = CACurrentMediaTime()
+    private var detectionInterval: Double = 0.3
 
     @objc public init(binaryMessenger: FlutterBinaryMessenger) {
         self.motionDetection = MotionDetection(binaryMessenger: binaryMessenger)
@@ -43,7 +45,7 @@ public class RtcMotionDetection: NSObject, RTCVideoRenderer {
     }
 
     var frameIntervalMs: Int {
-        motionDetection.frameIntervalMs
+        Int(detectionInterval * 1000)
     }
 
     private func start(videoTrack: RTCVideoTrack) {
@@ -79,14 +81,18 @@ public class RtcMotionDetection: NSObject, RTCVideoRenderer {
         guard let frame = frame else {
             return
         }
-        let buffer = frame.buffer.toI420()
-        let rotation = frame.rotation
-        motionDetection.processFrame(
-            buffer: buffer.dataY,
-            rotation: rotation.rawValue,
-            width: Int(frame.width),
-            height: Int(frame.height),
-            strideY: Int(buffer.strideY)
-        )
+        let currentTime = CACurrentMediaTime()
+        if (currentTime - previousTime > CFTimeInterval(detectionInterval)) {
+            previousTime = currentTime
+            let buffer = frame.buffer.toI420()
+            let rotation = frame.rotation
+            motionDetection.processFrame(
+                buffer: buffer.dataY,
+                rotation: rotation.rawValue,
+                width: Int(frame.width),
+                height: Int(frame.height),
+                strideY: Int(buffer.strideY)
+            )
+        }
     }
 }

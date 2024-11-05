@@ -17,8 +17,6 @@ public class MotionDetection: NSObject {
     private var detectionLevel = 0
     private let eventChannel: FlutterEventChannel
     private var eventSink: FlutterEventSink?
-    private var previosTime = CACurrentMediaTime()
-    private var detectionInterval: Double = 0.3
     private var listener: MotionDetectionListener?
     private let log = Log(subsystem: "MotionDetection", category: "")
     private var active = false
@@ -29,10 +27,6 @@ public class MotionDetection: NSObject {
             binaryMessenger: binaryMessenger)
         super.init()
         eventChannel.setStreamHandler(self)
-    }
-
-    var frameIntervalMs: Int {
-        Int(detectionInterval * 1000)
     }
 
     @objc public func setDetection(request: DetectionRequest) {
@@ -69,27 +63,22 @@ public class MotionDetection: NSObject {
                       width: Int,
                       height: Int,
                       strideY: Int) {
-        let currentTime = CACurrentMediaTime()
-        if (currentTime - previosTime > CFTimeInterval(detectionInterval)) {
-            previosTime = currentTime
-            // Now directly using CVPixelBuffer for PixelDetection
-            DispatchQueue.global(qos: .background).async { [weak self] in
-                guard let self = self else { return }
-                self.pixelDetection.detect(
-                    buffer: buffer,
-                    rotation: rotation,
-                    detectionLevel: self.detectionLevel,
-                    width: width,
-                    height: height,
-                    strideY: strideY,
-                    result: { [weak self] detected in
-                        self?.sendDetectionResult(detected)
-                        if !detected.detectedList.isEmpty {
-                            self?.listener?.onDetected(result: detected)
-                        }
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self = self else { return }
+            self.pixelDetection.detect(
+                buffer: buffer,
+                rotation: rotation,
+                detectionLevel: self.detectionLevel,
+                width: width,
+                height: height,
+                strideY: strideY,
+                result: { [weak self] detected in
+                    self?.sendDetectionResult(detected)
+                    if !detected.detectedList.isEmpty {
+                        self?.listener?.onDetected(result: detected)
                     }
-                )
-            }
+                }
+            )
         }
     }
 

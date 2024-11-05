@@ -13,7 +13,6 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : EventChannel.StreamHan
     private val pixelDetection by lazy { PixelDetection() }
     private val eventChannel = EventChannel(binaryMessenger, "FlutterWebRTC/motionDetection")
     private var eventSink: EventChannel.EventSink? = null
-    private var prevDetection = 0L
     private var detectionLevel = 2
     private var intervalMs = 300
     private var listener: Listener? = null
@@ -22,9 +21,6 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : EventChannel.StreamHan
     init {
         eventChannel.setStreamHandler(this)
     }
-
-    val frameIntervalMs: Long
-        get() = this.intervalMs.toLong()
 
     fun requestMotionDetection(request: DetectionRequest) {
         detectionLevel = request.level
@@ -43,10 +39,6 @@ class MotionDetection(binaryMessenger: BinaryMessenger) : EventChannel.StreamHan
     }
 
     fun processFrame(buffer: ByteBuffer, width: Int, height: Int, strideY: Int, rotation: Int) {
-        if (System.currentTimeMillis() - prevDetection < intervalMs) {
-            return
-        }
-        prevDetection = System.currentTimeMillis()
         thread {
             pixelDetection.detect(
                 buffer = buffer,

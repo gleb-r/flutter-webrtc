@@ -10,6 +10,8 @@ import org.webrtc.VideoTrack
 class RtcMotionDetection(binaryMessenger: BinaryMessenger) : VideoSink {
     private val motionDetection = MotionDetection(binaryMessenger)
     private var videoTrack: VideoTrack? = null
+    private var intervalMs = 300
+    private var prevDetection = 0L
 
     fun setVideoTrack(videoTrack: VideoTrack) {
         if (this.videoTrack != null) {
@@ -38,7 +40,7 @@ class RtcMotionDetection(binaryMessenger: BinaryMessenger) : VideoSink {
     }
 
     val frameIntervalMs: Long
-        get() = this.motionDetection.frameIntervalMs
+        get() = intervalMs.toLong()
 
     private var isActive = false
 
@@ -71,7 +73,14 @@ class RtcMotionDetection(binaryMessenger: BinaryMessenger) : VideoSink {
     }
 
     override fun onFrame(videoFrame: VideoFrame) {
+        if (System.currentTimeMillis() - prevDetection < intervalMs) {
+            return
+        }
+        prevDetection = System.currentTimeMillis()
+        videoFrame.retain()
         val i420Buffer = videoFrame.buffer.toI420() ?: return
+        val rotation = videoFrame.rotation
+        videoFrame.release()
         motionDetection.processFrame(
             i420Buffer.dataY,
             i420Buffer.width,
