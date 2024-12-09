@@ -109,7 +109,7 @@
 		F78310FD2C066817001145C6 /* FlutterRTCFrameCapturer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCFrameCapturer.m; sourceTree = "<group>"; };
 		F78310FE2C066817001145C6 /* FlutterRTCFrameCryptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCFrameCryptor.h; sourceTree = "<group>"; };
 		F78310FF2C066817001145C6 /* FlutterRTCFrameCryptor.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCFrameCryptor.m; sourceTree = "<group>"; };
-		F78311002C066817001145C6 /* FlutterRTCMediaStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCMediaStream.h; sourceTree = "<group>"; };
+		F78311002C066817001145C6 /* FlutterRTCMediaStream.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; path = FlutterRTCMediaStream.h; sourceTree = "<group>"; };
 		F78311012C066817001145C6 /* FlutterRTCMediaStream.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCMediaStream.m; sourceTree = "<group>"; };
 		F78311022C066817001145C6 /* FlutterRTCPeerConnection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlutterRTCPeerConnection.h; sourceTree = "<group>"; };
 		F78311032C066817001145C6 /* FlutterRTCPeerConnection.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlutterRTCPeerConnection.m; sourceTree = "<group>"; };

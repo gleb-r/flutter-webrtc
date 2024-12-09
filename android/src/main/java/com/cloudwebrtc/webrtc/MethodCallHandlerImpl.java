@@ -73,6 +73,7 @@ import org.webrtc.VideoTrack;
 import org.webrtc.VideoSource;
 import org.webrtc.audio.AudioDeviceModule;
 import org.webrtc.audio.JavaAudioDeviceModule;
+import org.webrtc.video.CustomExposureParams;
 import org.webrtc.video.CustomVideoDecoderFactory;
 import org.webrtc.video.CustomVideoEncoderFactory;
 
@@ -169,7 +170,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                     .setEnableInternalTracer(true)
                     .createInitializationOptions());
 
-    getUserMediaImpl = new GetUserMediaImpl(this, context);
+    getUserMediaImpl = new GetUserMediaImpl(this, context, messenger);
 
     frameCryptor = new FlutterRTCFrameCryptor(this);
 
@@ -594,6 +595,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         String trackId = call.argument("trackId");
         boolean torch = call.argument("torch");
         getUserMediaImpl.setTorch(trackId, torch, result);
+        break;
+      }
+      case "mediaStreamTrackSetCustomExposure": {
+        String trackId = call.argument("trackId");
+        CustomExposureParams params = CustomExposureParams.Companion.create(call);
+        getUserMediaImpl.setCustomExposure(trackId, params, result);
         break;
       }
       case "mediaStreamTrackSetZoom": {

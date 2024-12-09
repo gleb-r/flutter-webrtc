@@ -75,10 +75,34 @@ class MediaStreamTrackNative extends MediaStreamTrack {
         <String, dynamic>{'trackId': _trackId, 'torch': torch},
       );
 
+  Future<void> setCustomExposure({
+    required bool enable,
+    required int durationMs,
+    required int iso,
+    required bool ultraBrightness,
+  }) =>
+      WebRTC.invokeMethod(
+        'mediaStreamTrackSetCustomExposure',
+        <String, dynamic>{
+          'trackId': _trackId,
+          'enable': enable,
+          'ultraBrightness': ultraBrightness,
+          'durationMs': durationMs,
+          'iso': iso,
+        },
+      );
+
   @override
   Future<bool> switchCamera() => Helper.switchCamera(this);
 
   Future<void> setZoom(double zoomLevel) => Helper.setZoom(this, zoomLevel);
+
+  Future<void> setContinuousExposure(bool enable) {
+    return WebRTC.invokeMethod(
+      'enableContinuousExposure',
+      <String, dynamic>{'trackId': _trackId, 'enable': enable},
+    );
+  }
 
   @Deprecated('Use Helper.setSpeakerphoneOn instead')
   @override

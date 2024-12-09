@@ -32,4 +32,9 @@
 - (void)selectAudioInput:(nonnull NSString*)deviceId result:(nullable FlutterResult)result;
 
 - (void)selectAudioOutput:(nonnull NSString*)deviceId result:(nullable FlutterResult)result;
+
+- (void)mediaStreamTrackSetExposureMode:(Boolean)enableMode;
+
+- (void)mediaStreamTrackGetExposureMode:(RTCMediaStreamTrack*)track
+                                 result:(FlutterResult)result;
 @end

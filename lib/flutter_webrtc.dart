@@ -26,3 +26,5 @@ export 'src/native/android/audio_configuration.dart';
 export 'src/native/ios/audio_configuration.dart';
 export 'src/native/rtc_video_platform_view_controller.dart';
 export 'src/native/rtc_video_platform_view.dart';
+export 'src/native/media_stream_track_impl.dart';
+export 'src/native/night_vision.dart';

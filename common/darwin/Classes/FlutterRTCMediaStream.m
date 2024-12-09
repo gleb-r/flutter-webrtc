@@ -963,4 +963,69 @@ typedef void (^NavigatorUserMediaSuccessCallback)(RTCMediaStream* mediaStream);
   return fmin(maxSupportedFramerate, targetFps);
 }
 
+- (void)mediaStreamTrackSetExposureMode:(Boolean)enableMode {
+    if (!self.videoCapturer) {
+        NSLog(@"Video capturer is null. Can't set torch");
+        return;
+    }
+    if (self.videoCapturer.captureSession.inputs.count == 0) {
+        NSLog(@"Video capturer is missing an input. Can't set torch");
+        return;
+    }
+    AVCaptureDeviceInput* deviceInput = [self.videoCapturer.captureSession.inputs objectAtIndex:0];
+    AVCaptureDevice* device = deviceInput.device;
+    if (!device) {
+        NSLog(@"AVCapture device are not found");
+        return;
+    }
+    AVCaptureExposureMode mode = enableMode ? AVCaptureExposureModeContinuousAutoExposure : AVCaptureExposureModeAutoExpose;
+    
+    if ([device isExposureModeSupported:mode]) {
+        NSError *error = nil;
+        if ([device lockForConfiguration:&error]) {
+            if (enableMode) {
+                CMTime maxDuration = device.activeFormat.maxExposureDuration;
+                float maxISO = device.activeFormat.maxISO;
+                   // Set exposure duration to maximum (longest possible exposure)
+                   // Be cautious of motion blur with long exposure times
+                CMTime exposureDuration = maxDuration;
+                
+                   // Set ISO to maximum
+                float iso = maxISO;
+                
+                   // Apply the custom exposure settings
+                [device setExposureModeCustomWithDuration:exposureDuration ISO:iso completionHandler:nil];
+                NSLog(@"Enabling low light mode");
+            } else {
+                device.exposureMode = mode;
+            }
+            
+            [device unlockForConfiguration];
+            NSLog(@"Continuous mode exposure enanbled: %ld", (long)mode);
+        } else {
+            NSLog(@"Could not lock device for configuration: %@", error.localizedDescription);
+        }
+    } else {
+        NSLog(@"Exposure mode %ld is not supported", (long)mode);
+    }
+}
+
+-(void)mediaStreamTrackGetExposureMode:(RTCMediaStreamTrack*)track
+                                        result:(FlutterResult)result {
+    if (!self.videoCapturer) {
+        NSLog(@"Video capturer is null. Can't set torch");
+        return;
+    }
+    if (self.videoCapturer.captureSession.inputs.count == 0) {
+        NSLog(@"Video capturer is missing an input. Can't set torch");
+        return;
+    }
+    AVCaptureDeviceInput* deviceInput = [self.videoCapturer.captureSession.inputs objectAtIndex:0];
+    AVCaptureDevice* device = deviceInput.device;
+    if (!device) {
+        NSLog(@"AVCapture device are not found");
+        return;
+    }
+}
+
 @end
