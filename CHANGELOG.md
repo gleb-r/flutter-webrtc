@@ -1,6 +1,14 @@
 # Changelog
 
 --------------------------------------------
+[0.12.3] - 2024-11-29
+
+* [iOS/Android/macOS] feat: Expose AV Processing and Sink native APIs.
+
+[0.12.2] - 2024-11-26
+
+* [Dart] fix: race condition during video renderer initialization. (#1692)
+* [Darwin] fix: Add mutex lock to avoid pixelbuffer access contention.  (#1694)
 
 [0.12.1+hotfix.1] - 2024-10-25
 

@@ -20,10 +20,14 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.cloudwebrtc.webrtc.audio.AudioDeviceKind;
+import com.cloudwebrtc.webrtc.audio.AudioProcessingController;
 import com.cloudwebrtc.webrtc.audio.AudioSwitchManager;
 import com.cloudwebrtc.webrtc.detection.DetectionRequest;
 import com.cloudwebrtc.webrtc.detection.MotionDetection;
 import com.cloudwebrtc.webrtc.audio.AudioUtils;
+import com.cloudwebrtc.webrtc.audio.LocalAudioTrack;
+import com.cloudwebrtc.webrtc.audio.PlaybackSamplesReadyCallbackAdapter;
+import com.cloudwebrtc.webrtc.audio.RecordSamplesReadyCallbackAdapter;
 import com.cloudwebrtc.webrtc.record.AudioChannel;
 import com.cloudwebrtc.webrtc.record.FrameCapturer;
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult;
@@ -36,6 +40,7 @@ import com.cloudwebrtc.webrtc.utils.PermissionUtils;
 import com.cloudwebrtc.webrtc.utils.Utils;
 import com.cloudwebrtc.webrtc.videoRecorder.VideoRecorderFactory;
 
+import com.cloudwebrtc.webrtc.video.LocalVideoTrack;
 import com.twilio.audioswitch.AudioDevice;
 
 import org.webrtc.AudioTrack;
@@ -103,8 +108,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   private final TextureRegistry textures;
   private PeerConnectionFactory mFactory;
   private final Map<String, MediaStream> localStreams = new HashMap<>();
-  private final Map<String, MediaStreamTrack> localTracks = new HashMap<>();
+  private final Map<String, LocalTrack> localTracks = new HashMap<>();
   private final LongSparseArray<FlutterRTCVideoRenderer> renders = new LongSparseArray<>();
+
+  public RecordSamplesReadyCallbackAdapter recordSamplesReadyCallbackAdapter;
+
+  public PlaybackSamplesReadyCallbackAdapter playbackSamplesReadyCallbackAdapter;
 
   /**
    * The implementation of {@code getUserMedia} extracted into a separate file in order to reduce
@@ -125,6 +134,8 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private VideoRecorderFactory videoRecorderFactory;
 
+  public AudioProcessingController audioProcessingController;
+
   MethodCallHandlerImpl(Context context, BinaryMessenger messenger, TextureRegistry textureRegistry) {
     this.context = context;
     this.textures = textureRegistry;
@@ -137,32 +148,30 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     Log.d(TAG, errorMsg);
   }
 
-    void dispose() {
-        if (motionDetection != null) {
-            motionDetection.dispose();
-            motionDetection = null;
-        }
-        for (final MediaStream mediaStream : localStreams.values()) {
-            streamDispose(mediaStream);
-            mediaStream.dispose();
-        }
-        localStreams.clear();
-        for (final MediaStreamTrack track : localTracks.values()) {
-            track.dispose();
-        }
-        localTracks.clear();
-        for (final PeerConnectionObserver connection : mPeerConnectionObservers.values()) {
-            peerConnectionDispose(connection);
-        }
-        mPeerConnectionObservers.clear();
-
+  void dispose() {
+    if (motionDetection != null) {
+          motionDetection.dispose();
+          motionDetection = null;
     }
-
-    private void initialize(boolean bypassVoiceProcessing, int networkIgnoreMask, boolean forceSWCodec, List<String> forceSWCodecList,
-                            @Nullable ConstraintsMap androidAudioConfiguration) {
-        if (mFactory != null) {
-            return;
-        }
+    for (final MediaStream mediaStream : localStreams.values()) {
+      streamDispose(mediaStream);
+      mediaStream.dispose();
+    }
+    localStreams.clear();
+    for (final LocalTrack track : localTracks.values()) {
+      track.dispose();
+    }
+    localTracks.clear();
+    for (final PeerConnectionObserver connection : mPeerConnectionObservers.values()) {
+      peerConnectionDispose(connection);
+    }
+    mPeerConnectionObservers.clear();
+  }
+  private void initialize(boolean bypassVoiceProcessing, int networkIgnoreMask, boolean forceSWCodec, List<String> forceSWCodecList,
+  @Nullable ConstraintsMap androidAudioConfiguration) {
+    if (mFactory != null) {
+      return;
+    }
 
     PeerConnectionFactory.initialize(
             InitializationOptions.builder(context)
@@ -194,6 +203,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     }
     JavaAudioDeviceModule.Builder audioDeviceModuleBuilder = JavaAudioDeviceModule.builder(context);
 
+    recordSamplesReadyCallbackAdapter = new RecordSamplesReadyCallbackAdapter();
+    playbackSamplesReadyCallbackAdapter = new PlaybackSamplesReadyCallbackAdapter();
+
     if(bypassVoiceProcessing) {
       audioDeviceModuleBuilder.setUseHardwareAcousticEchoCanceler(false)
                         .setUseHardwareNoiseSuppressor(false)
@@ -202,15 +214,39 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                         .setAudioSource(MediaRecorder.AudioSource.MIC);
     } else {
       audioDeviceModuleBuilder.setUseHardwareAcousticEchoCanceler(true)
-                        .setUseHardwareNoiseSuppressor(true)
-                        .setSamplesReadyCallback(getUserMediaImpl.inputSamplesInterceptor);
+                        .setUseLowLatency(true)
+                        .setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                        .setUseHardwareNoiseSuppressor(true);
     }
+
+    audioDeviceModuleBuilder.setSamplesReadyCallback(recordSamplesReadyCallbackAdapter);
+    audioDeviceModuleBuilder.setPlaybackSamplesReadyCallback(playbackSamplesReadyCallbackAdapter);
+
+    recordSamplesReadyCallbackAdapter.addCallback(getUserMediaImpl.inputSamplesInterceptor);
+
+    recordSamplesReadyCallbackAdapter.addCallback(new JavaAudioDeviceModule.SamplesReadyCallback() {
+      @Override
+      public void onWebRtcAudioRecordSamplesReady(JavaAudioDeviceModule.AudioSamples audioSamples) {
+        for(LocalTrack track : localTracks.values()) {
+          if (track instanceof LocalAudioTrack) {
+            ((LocalAudioTrack) track).onWebRtcAudioRecordSamplesReady(audioSamples);
+          }
+        }
+      }
+    });
 
     if (audioAttributes != null) {
       audioDeviceModuleBuilder.setAudioAttributes(audioAttributes);
     }
 
     audioDeviceModule = audioDeviceModuleBuilder.createAudioDeviceModule();
+
+    if(!bypassVoiceProcessing) {
+       if(JavaAudioDeviceModule.isBuiltInNoiseSuppressorSupported()) {
+         audioDeviceModule.setNoiseSuppressorEnabled(true);
+       }
+    }
+
 
     getUserMediaImpl.audioDeviceModule = (JavaAudioDeviceModule) audioDeviceModule;
 
@@ -234,6 +270,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     videoDecoderFactory.setForceSWCodecList(forceSWCodecList);
     videoEncoderFactory.setForceSWCodec(forceSWCodec);
     videoEncoderFactory.setForceSWCodecList(forceSWCodecList);
+
+    audioProcessingController = new AudioProcessingController();
+
+    factoryBuilder.setAudioProcessingFactory(audioProcessingController.externalAudioProcessingFactory);
 
     mFactory = factoryBuilder
             .setAudioDeviceModule(audioDeviceModule)
@@ -351,7 +391,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         List<Object> audioTracks = new ArrayList<>();
         List<Object> videoTracks = new ArrayList<>();
         for (AudioTrack track : stream.audioTracks) {
-          localTracks.put(track.id(), track);
+          localTracks.put(track.id(), new LocalAudioTrack(track));
           Map<String, Object> trackMap = new HashMap<>();
           trackMap.put("enabled", track.enabled());
           trackMap.put("id", track.id());
@@ -362,7 +402,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           audioTracks.add(trackMap);
         }
         for (VideoTrack track : stream.videoTracks) {
-          localTracks.put(track.id(), track);
+          localTracks.put(track.id(), new LocalVideoTrack(track));
           Map<String, Object> trackMap = new HashMap<>();
           trackMap.put("enabled", track.enabled());
           trackMap.put("id", track.id());
@@ -493,7 +533,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         for (int i = 0; i < renders.size(); i++) {
           FlutterRTCVideoRenderer renderer = renders.valueAt(i);
           if (renderer.checkMediaStream(streamId, "local")) {
-            renderer.setVideoTrack((VideoTrack) localTracks.get(trackId));
+            LocalTrack track = localTracks.get(trackId);
+            if(track != null) {
+              renderer.setVideoTrack((VideoTrack) track.track);
+            }
           }
         }
         break;
@@ -1380,8 +1423,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   }
 
   @Override
-  public boolean putLocalTrack(String trackId, MediaStreamTrack track) {
+  public boolean putLocalTrack(String trackId, LocalTrack track) {
     localTracks.put(trackId, track);
+    // TODO: to LocalTrack after merge
     if (track.kind().equals(MediaStreamTrack.VIDEO_TRACK_KIND) &&
             motionDetection != null) {
       motionDetection.setVideoTrack((VideoTrack) track);
@@ -1390,8 +1434,22 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   }
 
   @Override
-  public MediaStreamTrack getLocalTrack(String trackId) {
+  public LocalTrack getLocalTrack(String trackId) {
     return localTracks.get(trackId);
+  }
+
+  public MediaStreamTrack getRemoteTrack(String trackId) {
+    for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {
+      PeerConnectionObserver pco = entry.getValue();
+      MediaStreamTrack track = pco.remoteTracks.get(trackId);
+      if (track == null) {
+        track = pco.getTransceiversTrack(trackId);
+      }
+      if (track != null) {
+        return track;
+      }
+    }
+    return null;
   }
 
   @Override
@@ -1467,28 +1525,30 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     return stream;
   }
 
-  private MediaStreamTrack getTrackForId(String trackId, String peerConnectionId) {
-    MediaStreamTrack track = localTracks.get(trackId);
-
-    if (track == null) {
+  public MediaStreamTrack getTrackForId(String trackId, String peerConnectionId) {
+    LocalTrack localTrack = localTracks.get(trackId);
+    MediaStreamTrack mediaStreamTrack = null;
+    if (localTrack == null) {
       for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {
         if (peerConnectionId != null && entry.getKey().compareTo(peerConnectionId) != 0)
           continue;
 
         PeerConnectionObserver pco = entry.getValue();
-        track = pco.remoteTracks.get(trackId);
+        mediaStreamTrack = pco.remoteTracks.get(trackId);
 
-        if (track == null) {
-          track = pco.getTransceiversTrack(trackId);
+        if (mediaStreamTrack == null) {
+          mediaStreamTrack = pco.getTransceiversTrack(trackId);
         }
 
-        if (track != null) {
+        if (mediaStreamTrack != null) {
           break;
         }
       }
+    } else {
+      mediaStreamTrack = localTrack.track;
     }
 
-    return track;
+    return mediaStreamTrack;
   }
 
     VideoTrack getRemoteVideoTrack(String mediaStreamId) {
@@ -1643,22 +1703,22 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     result.success(resultMap);
   }
 
-    public void trackDispose(final String trackId) {
-        MediaStreamTrack track = localTracks.get(trackId);
-        if (track == null) {
-            Log.d(TAG, "trackDispose() track is null");
-            return;
-        }
-        removeTrackForRendererById(trackId);
-        track.setEnabled(false);
-        if (track.kind().equals("video")) {
-            getUserMediaImpl.removeVideoCapturer(trackId);
-            if (motionDetection != null) {
-                motionDetection.removeVideoTrack(trackId);
-            }
-        }
-        localTracks.remove(trackId);
+  public void trackDispose(final String trackId) {
+    LocalTrack track = localTracks.get(trackId);
+    if (track == null) {
+      Log.d(TAG, "trackDispose() track is null");
+      return;
     }
+    removeTrackForRendererById(trackId);
+    track.setEnabled(false);
+    if (track instanceof LocalVideoTrack) {
+      getUserMediaImpl.removeVideoCapturer(trackId);
+      if (motionDetection != null) {
+         motionDetection.removeVideoTrack(trackId);
+      }
+    }
+    localTracks.remove(trackId);
+  }
 
   public void mediaStreamTrackSetEnabled(final String id, final boolean enabled, String peerConnectionId) {
     MediaStreamTrack track = getTrackForId(id, peerConnectionId);
@@ -1712,14 +1772,14 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   public void mediaStreamRemoveTrack(final String streamId, final String trackId, Result result) {
     MediaStream mediaStream = localStreams.get(streamId);
     if (mediaStream != null) {
-      MediaStreamTrack track = localTracks.get(trackId);
+      LocalTrack track = localTracks.get(trackId);
       if (track != null) {
         String kind = track.kind();
         if (kind.equals("audio")) {
-          mediaStream.removeTrack((AudioTrack) track);
+          mediaStream.removeTrack((AudioTrack) track.track);
           result.success(null);
         } else if (kind.equals("video")) {
-          mediaStream.removeTrack((VideoTrack) track);
+          mediaStream.removeTrack((VideoTrack) track.track);
           result.success(null);
         } else {
           resultError("mediaStreamRemoveTrack", "mediaStreamRemoveTrack() track [" + trackId + "] has unsupported type: " + kind, result);
@@ -1738,7 +1798,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       Log.d(TAG, "mediaStreamTrackRelease() stream is null");
       return;
     }
-    MediaStreamTrack track = localTracks.get(_trackId);
+    LocalTrack track = localTracks.get(_trackId);
     if (track == null) {
       Log.d(TAG, "mediaStreamTrackRelease() track is null");
       return;
@@ -1746,9 +1806,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     track.setEnabled(false); // should we do this?
     localTracks.remove(_trackId);
     if (track.kind().equals("audio")) {
-      stream.removeTrack((AudioTrack) track);
+      stream.removeTrack((AudioTrack) track.track);
     } else if (track.kind().equals("video")) {
-      stream.removeTrack((VideoTrack) track);
+      stream.removeTrack((VideoTrack) track.track);
       getUserMediaImpl.removeVideoCapturer(_trackId);
     }
   }
@@ -2046,9 +2106,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   public void streamDispose(final MediaStream stream) {
     List<VideoTrack> videoTracks = stream.videoTracks;
     for (VideoTrack track : videoTracks) {
-        if (motionDetection != null) {
-            motionDetection.removeVideoTrack(track.id());
-        }
+      if (motionDetection != null) {
+         motionDetection.removeVideoTrack(track.id());
+      }
       localTracks.remove(track.id());
       getUserMediaImpl.removeVideoCapturer(track.id());
       stream.removeTrack(track);
@@ -2122,7 +2182,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   public void addTrack(String peerConnectionId, String trackId, List<String> streamIds, Result result) {
     PeerConnectionObserver pco = mPeerConnectionObservers.get(peerConnectionId);
-    MediaStreamTrack track = localTracks.get(trackId);
+    LocalTrack track = localTracks.get(trackId);
     if (track == null) {
       resultError("addTrack", "track is null", result);
       return;
@@ -2130,7 +2190,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     if (pco == null || pco.getPeerConnection() == null) {
       resultError("addTrack", "peerConnection is null", result);
     } else {
-      pco.addTrack(track, streamIds, result);
+      pco.addTrack(track.track, streamIds, result);
     }
   }
 
@@ -2146,7 +2206,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   public void addTransceiver(String peerConnectionId, String trackId, Map<String, Object> transceiverInit,
                              Result result) {
     PeerConnectionObserver pco = mPeerConnectionObservers.get(peerConnectionId);
-    MediaStreamTrack track = localTracks.get(trackId);
+    LocalTrack track = localTracks.get(trackId);
     if (track == null) {
       resultError("addTransceiver", "track is null", result);
       return;
@@ -2154,7 +2214,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     if (pco == null || pco.getPeerConnection() == null) {
       resultError("addTransceiver", "peerConnection is null", result);
     } else {
-      pco.addTransceiver(track, transceiverInit, result);
+      pco.addTransceiver(track.track, transceiverInit, result);
     }
   }
 
@@ -2254,15 +2314,19 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     if (pco == null || pco.getPeerConnection() == null) {
       resultError("rtpSenderSetTrack", "peerConnection is null", result);
     } else {
-      MediaStreamTrack track = null;
+      MediaStreamTrack mediaStreamTrack = null;
+      LocalTrack track = localTracks.get(trackId);
       if (trackId.length() > 0) {
-        track = localTracks.get(trackId);
         if (track == null) {
           resultError("rtpSenderSetTrack", "track is null", result);
           return;
         }
       }
-      pco.rtpSenderSetTrack(rtpSenderId, track, result, replace);
+
+      if(track != null) {
+        mediaStreamTrack = track.track;
+      }
+      pco.rtpSenderSetTrack(rtpSenderId, mediaStreamTrack, result, replace);
     }
   }
 
