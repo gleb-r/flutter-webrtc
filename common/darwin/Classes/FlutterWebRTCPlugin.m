@@ -443,10 +443,12 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
         NSString *streamId = arguments[@"streamId"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
 
+        BOOL isLocalTrack = YES;
         RTCVideoTrack *videoTrack = [self getLocalVideoTrack:streamId];
         RTCMediaStreamTrack *audioTrack = [self getLocalAudioTrack:streamId];
         if (videoTrack == nil) {
             videoTrack = [self getRemoteVideoTrack:streamId];
+            isLocalTrack = NO;
         }
         if (audioTrack == nil) {
             audioTrack = [self getRemoteAudioTrack:streamId];
@@ -467,6 +469,7 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
                                             recordId: recordId
                                              path:path
                                          enableAudio:[enableAudio boolValue]
+                                         isLocalTrack:@(isLocalTrack)
                                               result:result];
         }
     } else if ([@"stopRecordVideo" isEqualToString:call.method]) {

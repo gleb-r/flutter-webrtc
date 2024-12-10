@@ -35,8 +35,9 @@ public class VideoRecorder:NSObject {
     private var enableAudio = false
     private var path: String?
     private var shouldStop = false
+    private var isLocalTrack = false
     private var detectionData: DetectionData?
-    private var startHostTime: CMTime?
+    private var startVoiceTime: CMTime?
 
     private static let TIME_SCALE: Int32 = 600
 
@@ -68,6 +69,7 @@ public class VideoRecorder:NSObject {
                                   recordId : String,
                                   path:String,
                                   enableAudio: Bool,
+                                  isLocalTrack: Bool,
                                   result: FlutterResult?) {
         log.d("Start capture called")
         guard state == .idle else {
@@ -77,6 +79,7 @@ public class VideoRecorder:NSObject {
         let pathUrl = URL(fileURLWithPath: path)
         result?(true)
         self.videoTrack = videoTrack
+        self.isLocalTrack = isLocalTrack
         self.audioTrack = audioTrack
         self.enableAudio = enableAudio
         self.recordId = recordId
@@ -216,6 +219,7 @@ public class VideoRecorder:NSObject {
                     recordId: recordId,
                     path: path,
                     enableAudio: self.enableAudio,
+                    isLocalTrack: self.isLocalTrack,
                     result: nil)
 
         log.d("Restart finished")
@@ -258,13 +262,16 @@ public class VideoRecorder:NSObject {
     private func initialize() {
         log.d("Initialize started")
         guard let frameSize = self.frameSize else { return }
-        self.startHostTime = CMClockGetTime(CMClockGetHostTimeClock())
 
         state = .initialazing
         Task(priority: .background) {
             await self.createVideoWriter(size: frameSize)
             if (self.enableAudio) {
-                await self.createAudioWriterViaMicro()
+                if self.isLocalTrack {
+                    await self.createAudioWriterViaMicro()
+                } else {
+                    await self.createAudioWriterViaRtcTrack()
+                }
             }
             await self.startWriting()
             await self.createBuffer(size: frameSize)
@@ -287,6 +294,7 @@ public class VideoRecorder:NSObject {
         }
         mediaWriter.startWriting()
         mediaWriter.startSession(atSourceTime: CMTime.zero)
+        self.startVoiceTime = CMClockGetTime(CMClockGetHostTimeClock())
     }
 
     /// heavy operation takes about 1 sec
@@ -400,10 +408,10 @@ public class VideoRecorder:NSObject {
                  let audioWriterInput = self.audioWriterInput,
                  audioWriterInput.isReadyForMoreMediaData,
                  let audioFormatDescription = audioFormatDescription,
-                 let startHostTime = self.startHostTime else { return }
+                 let startVoiceTime = self.startVoiceTime else { return }
 
            let nowHostTime = CMClockGetTime(CMClockGetHostTimeClock())
-           let elapsed = CMTimeSubtract(nowHostTime, startHostTime)
+           let elapsed = CMTimeSubtract(nowHostTime, startVoiceTime)
 
            let samplesCount = CMItemCount(buffer.frameLength)
 
@@ -425,7 +433,6 @@ public class VideoRecorder:NSObject {
            )
 
            if statusBlock == kCMBlockBufferNoErr, let bb = blockBuffer {
-               // Вызов без именованных параметров
                CMBlockBufferReplaceDataBytes(with: dataPtrSafe, blockBuffer: bb, offsetIntoDestination: 0, dataLength: dataSize)
                let sampleRate = asbd.mSampleRate
                let duration = CMTimeMake(value: Int64(samplesCount), timescale: Int32(sampleRate))
