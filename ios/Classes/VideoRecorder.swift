@@ -355,6 +355,18 @@ public class VideoRecorder:NSObject {
            return
        }
 
+       let audioSession = AVAudioSession.sharedInstance()
+       do {
+           try audioSession.setCategory(
+               .playAndRecord,
+               mode: .default,
+               options: [.defaultToSpeaker, .allowBluetooth]
+           )
+           try audioSession.setActive(true)
+       } catch {
+           log.e("Failed to configure AVAudioSession: \(error)")
+       }
+
        var acl = AudioChannelLayout()
        memset(&acl, 0, MemoryLayout<AudioChannelLayout>.size)
        acl.mChannelLayoutTag = kAudioChannelLayoutTag_Mono
