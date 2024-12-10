@@ -13,7 +13,6 @@ import AVFoundation
 import OSLog
 import flutter_webrtc
 
-
 public class VideoRecorder:NSObject {
     private var videoTrack: RTCVideoTrack?
     private var audioTrack: RTCAudioTrack?
@@ -24,7 +23,7 @@ public class VideoRecorder:NSObject {
     private var pixelBuffer: CVPixelBuffer?
     private var frameSize: CGSize?
     private var adapter: AVAssetWriterInputPixelBufferAdaptor?
-   
+
     private var recordId: String?
     private var audioSink: FlutterRTCAudioSink?
 
@@ -36,10 +35,12 @@ public class VideoRecorder:NSObject {
     private var enableAudio = false
     private var path: String?
     private var shouldStop = false
+    private var isLocalTrack = false
     private var detectionData: DetectionData?
-    
+    private var startVoiceTime: CMTime?
+
     private static let TIME_SCALE: Int32 = 600
- 
+
     private var log =  Log(subsystem: "Recording", category: "")
     private var state = RecorderState.idle {
         didSet {
@@ -49,9 +50,11 @@ public class VideoRecorder:NSObject {
             sendEvent(event: RecordEvent(type: eventType, data: nil))
         }
     }
-    
-    
-    
+
+    // Add for recording using device's micro
+    private var audioEngine: AVAudioEngine?
+    private var audioFormat: AVAudioFormat?
+
     @objc public init(binaryMessenger: FlutterBinaryMessenger, motionDetection: MotionDetection) {
         eventChannel = FlutterEventChannel(
             name: "FlutterWebRTC/detectionOnVideo",
@@ -60,15 +63,14 @@ public class VideoRecorder:NSObject {
         super.init()
         eventChannel.setStreamHandler(self)
     }
-    
-    
+
     @objc public func startCapure(videoTrack: RTCVideoTrack,
                                   audioTrack: RTCAudioTrack?,
                                   recordId : String,
                                   path:String,
                                   enableAudio: Bool,
+                                  isLocalTrack: Bool,
                                   result: FlutterResult?) {
-        
         log.d("Start capture called")
         guard state == .idle else {
             result?(false)
@@ -77,6 +79,7 @@ public class VideoRecorder:NSObject {
         let pathUrl = URL(fileURLWithPath: path)
         result?(true)
         self.videoTrack = videoTrack
+        self.isLocalTrack = isLocalTrack
         self.audioTrack = audioTrack
         self.enableAudio = enableAudio
         self.recordId = recordId
@@ -95,15 +98,14 @@ public class VideoRecorder:NSObject {
         self.recordId = recordId
         self.state = .start
     }
-    
-    
+
     @objc public func stopCapure(result:  @escaping FlutterResult) {
         log.d("Stop capture called")
         if state == .initialazing {
             shouldStop = true
             return
         }
-        
+
         guard state == .capturing else  {
             disposeRecording()
             // TODO: send error through event channel
@@ -139,27 +141,29 @@ public class VideoRecorder:NSObject {
             return
         }
         self.motionDetection.removeLister()
+
         Task(priority: .background) { [weak self] in
             guard let self = self else { return }
             self.videoTrack?.remove(self)
             self.videoWriterInput?.markAsFinished()
             self.audioWriterInput?.markAsFinished()
+            self.stopAudioCapture()
             let durationMs: Int
             if let firstFrameTime = self.firstFrameTime {
                 durationMs = Int((CACurrentMediaTime() - firstFrameTime) * 1000)
             } else { durationMs = 0 }
             await mediaWriter.finishWriting()
             guard mediaWriter.status != .failed else {
-                log.e("Video writing failed:\(mediaWriter.error?.localizedDescription ?? "")")
-                sendError(FlutterError(code: "Stop error",
-                                       message: "writer status is failed",
-                                       details: nil))
-                disposeRecording()
+                self.log.e("Video writing failed:\(mediaWriter.error?.localizedDescription ?? "")")
+                self.sendError(FlutterError(code: "Stop error",
+                                            message: "writer status is failed",
+                                            details: nil))
+                self.disposeRecording()
                 return
             }
             let status = mediaWriter.status
-            log.d("Video writing fished with:\(status)")
-            detectionData?.duration = durationMs
+            self.log.d("Video writing fished with:\(status)")
+            self.detectionData?.duration = durationMs
             let recResult = RecordingResult(
                 recordId: recordId,
                 videoPath: videoPath,
@@ -168,7 +172,7 @@ public class VideoRecorder:NSObject {
                 detectionData: self.detectionData
             )
             self.log.d("Send rec result")
-            sendEvent(event: RecordEvent(
+            self.sendEvent(event: RecordEvent(
                 type: .result,
                 data: recResult.toJson())
             )
@@ -176,29 +180,29 @@ public class VideoRecorder:NSObject {
         }
         result(true)
     }
-    
+
     private func stopWithoutSaving() async -> Void {
         log.d("Stop without saving")
         videoTrack?.remove(self)
         motionDetection.removeLister()
         videoWriterInput?.markAsFinished()
         audioWriterInput?.markAsFinished()
+        stopAudioCapture()
         await mediaWriter?.finishWriting()
         disposeRecording()
     }
-    
+
     private func restartRecording() {
         guard let videoTrack = self.videoTrack,
               let path = self.path,
               let recordId = self.recordId
-              
         else {
             log.e("Can't restart, videoTrack is nil")
             return
         }
         self.state = .idle
         log.w("restart recording")
-        
+
         videoWriterInput?.markAsFinished()
         audioWriterInput?.markAsFinished()
         log.d("Writer marked as finished")
@@ -215,8 +219,9 @@ public class VideoRecorder:NSObject {
                     recordId: recordId,
                     path: path,
                     enableAudio: self.enableAudio,
+                    isLocalTrack: self.isLocalTrack,
                     result: nil)
-        
+
         log.d("Restart finished")
     }
 
@@ -230,7 +235,6 @@ public class VideoRecorder:NSObject {
         self.frameSize = nil
         self.adapter = nil
         self.videoTrack = nil
-        self.audioTrack = nil
         self.mediaWriter = nil
         self.adapter = nil
         self.firstFrameTime = nil
@@ -239,8 +243,10 @@ public class VideoRecorder:NSObject {
         self.state = .idle
         self.shouldStop = false
         self.detectionData = nil
+        self.audioEngine = nil
+        self.audioFormat = nil
     }
-    
+
     public func setSize(_ size: CGSize) {
         if let frameSize = self.frameSize, frameSize != size {
             log.w("frame size changed prev: \(frameSize), new: \(size)")
@@ -256,23 +262,27 @@ public class VideoRecorder:NSObject {
     private func initialize() {
         log.d("Initialize started")
         guard let frameSize = self.frameSize else { return }
-       
+
         state = .initialazing
         Task(priority: .background) {
-            await createVideoWriter(size: frameSize)
-            if (enableAudio) {
-                await createAudioWriter()
+            await self.createVideoWriter(size: frameSize)
+            if (self.enableAudio) {
+                if self.isLocalTrack {
+                    await self.createAudioWriterViaMicro()
+                } else {
+                    await self.createAudioWriterViaRtcTrack()
+                }
             }
-            await startWriting()
-            await createBuffer(size: frameSize)
-            motionDetection.addListener(listener: self)
-            state = .capturing
-            log.d("Initialize finished")
-            if shouldStop {
-                log.d("disposing after init")
-                await stopWithoutSaving()
+            await self.startWriting()
+            await self.createBuffer(size: frameSize)
+            self.motionDetection.addListener(listener: self)
+            self.state = .capturing
+            self.log.d("Initialize finished")
+            if self.shouldStop {
+                self.log.d("disposing after init")
+                await self.stopWithoutSaving()
             }
-            
+
         }
     }
 
@@ -284,10 +294,11 @@ public class VideoRecorder:NSObject {
         }
         mediaWriter.startWriting()
         mediaWriter.startSession(atSourceTime: CMTime.zero)
+        self.startVoiceTime = CMClockGetTime(CMClockGetHostTimeClock())
     }
 
     /// heavy operation takes about 1 sec
-    private func createAudioWriter() async -> Void {
+    private func createAudioWriterViaRtcTrack() async -> Void {
         log.d("create audio writer")
         guard let audioTrack = self.audioTrack else {
             log.e("audioTrack is nil")
@@ -295,7 +306,7 @@ public class VideoRecorder:NSObject {
         }
         audioSink = FlutterRTCAudioSink.init(audioTrack: audioTrack)
         log.d("Audio sink created")
-        
+
         guard let audioSink = self.audioSink else { return }
         var acl = AudioChannelLayout()
         memset(&acl, 0, MemoryLayout<AudioChannelLayout>.size)
@@ -336,7 +347,148 @@ public class VideoRecorder:NSObject {
         }
         log.d("Audio writer created")
     }
-    
+
+   private func createAudioWriterViaMicro() async {
+       log.d("create audio writer from mic")
+       guard let mediaWriter = self.mediaWriter else {
+           log.e("mediaWriter is nil")
+           return
+       }
+
+       let audioSession = AVAudioSession.sharedInstance()
+       do {
+           try audioSession.setCategory(
+               .playAndRecord,
+               mode: .default,
+               options: [.defaultToSpeaker, .allowBluetooth]
+           )
+           try audioSession.setActive(true)
+       } catch {
+           log.e("Failed to configure AVAudioSession: \(error)")
+       }
+
+       var acl = AudioChannelLayout()
+       memset(&acl, 0, MemoryLayout<AudioChannelLayout>.size)
+       acl.mChannelLayoutTag = kAudioChannelLayoutTag_Mono
+
+       let audioSettings: [String: Any] = [
+           AVFormatIDKey: NSNumber(value: kAudioFormatMPEG4AAC),
+           AVNumberOfChannelsKey: 1,
+           AVSampleRateKey: 44100.0,
+           AVChannelLayoutKey: NSData(bytes: &acl, length: MemoryLayout<AudioChannelLayout>.size),
+           AVEncoderBitRateKey: 64000
+       ]
+
+       self.audioWriterInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+       guard let audioWriterInput = self.audioWriterInput else {
+           log.e("AudioWriterInput is nil")
+           return
+       }
+       audioWriterInput.expectsMediaDataInRealTime = true
+       mediaWriter.add(audioWriterInput)
+
+       let audioEngine = AVAudioEngine()
+       self.audioEngine = audioEngine
+
+       let inputNode = audioEngine.inputNode
+       let inputFormat = inputNode.inputFormat(forBus: 0)
+
+       let asbdPointer = inputFormat.streamDescription
+       let asbd = asbdPointer.pointee
+
+       var audioFormatDescription: CMAudioFormatDescription?
+       var localAsbd = asbd
+       let statusDesc = CMAudioFormatDescriptionCreate(
+           allocator: kCFAllocatorDefault,
+           asbd: &localAsbd,
+           layoutSize: 0,
+           layout: nil,
+           magicCookieSize: 0,
+           magicCookie: nil,
+           extensions: nil,
+           formatDescriptionOut: &audioFormatDescription
+       )
+       if statusDesc != noErr {
+           log.e("Failed to create CMAudioFormatDescription")
+           return
+       }
+
+       // Listen to micro
+       inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self, audioFormatDescription, asbd] (buffer, when) in
+           let installTapStartTime = CFAbsoluteTimeGetCurrent()
+           guard let self = self,
+                 let audioWriterInput = self.audioWriterInput,
+                 audioWriterInput.isReadyForMoreMediaData,
+                 let audioFormatDescription = audioFormatDescription,
+                 let startVoiceTime = self.startVoiceTime else { return }
+
+           let nowHostTime = CMClockGetTime(CMClockGetHostTimeClock())
+           let elapsed = CMTimeSubtract(nowHostTime, startVoiceTime)
+
+           let samplesCount = CMItemCount(buffer.frameLength)
+
+           let dataPtr = buffer.audioBufferList.pointee.mBuffers.mData
+           let dataSize = Int(buffer.audioBufferList.pointee.mBuffers.mDataByteSize)
+           guard let dataPtrSafe = dataPtr else { return }
+
+           var blockBuffer: CMBlockBuffer?
+           let statusBlock = CMBlockBufferCreateWithMemoryBlock(
+               allocator: kCFAllocatorDefault,
+               memoryBlock: nil,
+               blockLength: dataSize,
+               blockAllocator: nil,
+               customBlockSource: nil,
+               offsetToData: 0,
+               dataLength: dataSize,
+               flags: 0,
+               blockBufferOut: &blockBuffer
+           )
+
+           if statusBlock == kCMBlockBufferNoErr, let bb = blockBuffer {
+               CMBlockBufferReplaceDataBytes(with: dataPtrSafe, blockBuffer: bb, offsetIntoDestination: 0, dataLength: dataSize)
+               let sampleRate = asbd.mSampleRate
+               let duration = CMTimeMake(value: Int64(samplesCount), timescale: Int32(sampleRate))
+
+               var timingInfo: CMSampleTimingInfo = CMSampleTimingInfo(
+                   duration: duration,
+                   presentationTimeStamp: elapsed,
+                   decodeTimeStamp: CMTime.invalid
+               )
+               var sampleBuffer: CMSampleBuffer?
+               let statusSamp = CMSampleBufferCreateReady(
+                   allocator: kCFAllocatorDefault,
+                   dataBuffer: bb,
+                   formatDescription: audioFormatDescription,
+                   sampleCount: samplesCount,
+                   sampleTimingEntryCount: 1,
+                   sampleTimingArray: &timingInfo,
+                   sampleSizeEntryCount: 0,
+                   sampleSizeArray: nil,
+                   sampleBufferOut: &sampleBuffer
+               )
+
+               if statusSamp == noErr, let sb = sampleBuffer {
+                   audioWriterInput.append(sb)
+               }
+           }
+       }
+
+       do {
+           try audioEngine.start()
+       } catch {
+           log.e("Failed to start audio engine: \(error)")
+           sendError(FlutterError(code: "AudioEngineStartError", message: error.localizedDescription, details: nil))
+       }
+
+       log.d("Audio writer (mic) created")
+   }
+
+    private func stopAudioCapture() {
+        audioEngine?.inputNode.removeTap(onBus: 0)
+        audioEngine?.stop()
+        audioEngine = nil
+    }
+
     private func addFrame(frame: RTCVideoFrame?) {
         guard let frame = frame,
               let pixelBuffer = self.pixelBuffer,
@@ -364,8 +516,7 @@ public class VideoRecorder:NSObject {
         adapter?.append(pixelBuffer, withPresentationTime: persentedTime)
         // TODO: for first frame from start return started event
     }
-    
-    
+
     private func createVideoWriter(size: CGSize) async -> Void {
         log.d("Create video writer")
         let settings: [String: Any] = [
@@ -384,7 +535,7 @@ public class VideoRecorder:NSObject {
         writer.add(writerInput)
         log.d("Writer created for size: \(size), status: \(writer.status)")
     }
-    
+
     private func createBuffer(size: CGSize) async -> Void {
         CVPixelBufferCreate(kCFAllocatorDefault,
                             Int(size.width),
@@ -393,7 +544,6 @@ public class VideoRecorder:NSObject {
                             nil,
                             &pixelBuffer)
     }
-   
 }
 
 enum RecorderState {
@@ -433,23 +583,23 @@ extension VideoRecorder: MotionDetectionListener {
 
 
 extension VideoRecorder: FlutterStreamHandler {
-    
+
     public func onListen(
         withArguments arguments: Any?,
         eventSink events: @escaping FlutterEventSink) -> FlutterError? {
             eventSink = events
             return nil
         }
-    
+
     public func onCancel(withArguments arguments: Any?) -> FlutterError? {
         eventSink = nil
         return nil
     }
-    
+
     private func sendError(_ error: FlutterError) {
         sendEvent(event: RecordEvent(type: .error, data: error.toJson()))
     }
-    
+
     private func sendEvent(event:RecordEvent) {
         DispatchQueue.main.async { [weak self] in
             guard let eventSink = self?.eventSink else { return}
@@ -473,15 +623,15 @@ extension VideoRecorder: RTCVideoRenderer {
 extension RTCI420BufferProtocol {
     func correctRotation(rotation: RTCVideoRotation) -> RTCI420BufferProtocol {
         let rotatedWidth: Int32
-        let rotatedHeght: Int32
+        let rotatedHeight: Int32
         if rotation == ._90 || rotation == ._270 {
             rotatedWidth = self.height
-            rotatedHeght = self.width
+            rotatedHeight = self.width
         } else {
-            rotatedHeght = self.height
+            rotatedHeight = self.height
             rotatedWidth = self.width
         }
-        let buffer = RTCI420Buffer.init(width: rotatedWidth, height: rotatedHeght)
+        let buffer = RTCI420Buffer.init(width: rotatedWidth, height: rotatedHeight)
         RTCYUVHelper.i420Rotate(
             self.dataY,
             srcStrideY: strideY,
@@ -500,7 +650,7 @@ extension RTCI420BufferProtocol {
             mode: rotation)
         return buffer
     }
-    
+
 }
 
 extension CVPixelBuffer {
@@ -510,7 +660,7 @@ extension CVPixelBuffer {
         let pixelFormat: OSType = CVPixelBufferGetPixelFormatType(self)
         if pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange ||
             pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange {
-            
+
             let dstY = CVPixelBufferGetBaseAddressOfPlane(self, 0)
             let dstYStride = CVPixelBufferGetBytesPerRowOfPlane(self, 0)
             let dstUV = CVPixelBufferGetBaseAddressOfPlane(self, 1)
@@ -531,7 +681,6 @@ extension CVPixelBuffer {
             let dst = CVPixelBufferGetBaseAddress(self)
             let bytesPerRow = CVPixelBufferGetBytesPerRow(self)
             if pixelFormat == kCVPixelFormatType_32BGRA {
-                
                 RTCYUVHelper.i420(toARGB: i420Buf.dataY,
                                   srcStrideY: i420Buf.strideY,
                                   srcU: i420Buf.dataU,
@@ -553,7 +702,6 @@ extension CVPixelBuffer {
                                   dstStrideBGRA: Int32(bytesPerRow),
                                   width: i420Buf.width,
                                   height: i420Buf.height)
-                
             }
         }
         CVPixelBufferUnlockBaseAddress(self, .readOnly)
