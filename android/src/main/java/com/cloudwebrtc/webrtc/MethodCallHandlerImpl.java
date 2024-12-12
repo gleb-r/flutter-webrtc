@@ -402,7 +402,8 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           audioTracks.add(trackMap);
         }
         for (VideoTrack track : stream.videoTracks) {
-          localTracks.put(track.id(), new LocalVideoTrack(track));
+          LocalVideoTrack localVideoTrack = new LocalVideoTrack(track);
+          localTracks.put(track.id(), localVideoTrack);
           Map<String, Object> trackMap = new HashMap<>();
           trackMap.put("enabled", track.enabled());
           trackMap.put("id", track.id());
@@ -412,7 +413,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           trackMap.put("remote", false);
           videoTracks.add(trackMap);
           if (motionDetection != null) {
-              motionDetection.setVideoTrack(track);
+            motionDetection.setVideoTrack(localVideoTrack);
           }
         }
         resultMap.put("audioTracks", audioTracks);
@@ -757,22 +758,22 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                 return;
             }
 
-                VideoTrack videoTrack = getLocalVideoTrack(mediaStreamId);
+                LocalVideoTrack localVideoTrack = getLocalVideoTrack();
                 Boolean isLocal = true;
-                if (videoTrack == null) {
-                    isLocal = false;
-                    videoTrack = getRemoteVideoTrack(mediaStreamId);
-                    if (videoTrack == null) {
-                        resultError(call.method, "Cant find video track", result);
-                        return;
-                    }
-                }
-                if (motionDetection == null) {
+                VideoTrack videoTrack;
+                if (localVideoTrack != null) {
+                  videoTrack = (VideoTrack) localVideoTrack.track;
+                  if (motionDetection == null) {
                     motionDetection = new MotionDetection(messenger);
-                    VideoTrack loaclVideoTrack = getLocalVideoTrack(mediaStreamId);
-                    if (loaclVideoTrack != null) {
-                      motionDetection.setVideoTrack(loaclVideoTrack);
-                    }
+                    motionDetection.setVideoTrack(localVideoTrack);
+                  }
+                } else {
+                  isLocal = false;
+                  videoTrack = getRemoteVideoTrack(mediaStreamId);
+                  if (videoTrack == null) {
+                    resultError(call.method, "Cant find video track", result);
+                    return;
+                  }
                 }
                 if (videoRecorderFactory == null) {
                     videoRecorderFactory = new VideoRecorderFactory(
@@ -830,9 +831,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
             case "motionDetection": {
                 if (motionDetection == null) {
                     motionDetection = new MotionDetection(messenger);
-                    VideoTrack track = getLocalVideoTrack();
+                    LocalVideoTrack track = getLocalVideoTrack();
                     if (track != null) {
-                      motionDetection.setVideoTrack(track);
+                        motionDetection.setVideoTrack(track);
                     }
                 }
                 DetectionRequest request = DetectionRequest.Companion.fromMethodCall(call);
@@ -1425,10 +1426,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   @Override
   public boolean putLocalTrack(String trackId, LocalTrack track) {
     localTracks.put(trackId, track);
-    // TODO: to LocalTrack after merge
-    if (track.kind().equals(MediaStreamTrack.VIDEO_TRACK_KIND) &&
+    if (track instanceof LocalVideoTrack &&
             motionDetection != null) {
-      motionDetection.setVideoTrack((VideoTrack) track);
+        motionDetection.setVideoTrack((LocalVideoTrack) track);
     }
     return true;
   }
@@ -1567,18 +1567,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         return null;
     }
 
-    VideoTrack getLocalVideoTrack(String mediaStreamId) {
-        MediaStream stream = localStreams.get(mediaStreamId);
-        if (stream != null) {
-            return stream.videoTracks.get(0);
-        }
-        return null;
-    }
-
-    private VideoTrack getLocalVideoTrack() {
-        for (MediaStreamTrack track : localTracks.values()) {
-            if (track.kind().equals(MediaStreamTrack.VIDEO_TRACK_KIND)) {
-                return (VideoTrack) track;
+    private LocalVideoTrack getLocalVideoTrack() {
+        for (LocalTrack track : localTracks.values()) {
+            if (track instanceof LocalVideoTrack) {
+                return (LocalVideoTrack) track;
             }
         }
         return null;

@@ -445,21 +445,23 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
         NSString *peerId = arguments[@"peerId"];
         NSString *streamId = arguments[@"streamId"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
-
-        RTCVideoTrack *videoTrack = [self getLocalVideoTrack:streamId];
-        RTCMediaStreamTrack *audioTrack = [self getLocalAudioTrack:streamId];
-        if (videoTrack == nil) {
+        LocalVideoTrack*  localVideoTrack = [self getLocalVideoTrack];
+        LocalAudioTrack*  localAudioTrack = [self getLocalAudioTrack];
+        RTCVideoTrack* videoTrack;
+        RTCAudioTrack* audioTrack;
+        if (localVideoTrack != nil  && localAudioTrack != nil) {
+           videoTrack = localVideoTrack.videoTrack;
+           audioTrack = localAudioTrack.audioTrack;
+        } else {
             videoTrack = [self getRemoteVideoTrack:streamId];
-        }
-        if (audioTrack == nil) {
             audioTrack = [self getRemoteAudioTrack:streamId];
         }
         if (videoTrack == nil) {
           result([FlutterError errorWithCode:@"Can't find video track" message:nil details:nil]);
         } else {
-            if (motionDetection == nil) {
+            if (localVideoTrack != nil && motionDetection == nil) {
                 motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
-                [motionDetection setVideoTrackWithVideoTrack:videoTrack];
+                [motionDetection setVideoTrackWithVideoTrack:localVideoTrack.videoTrack];
             }
             if (videoRecorder == nil) {
                 videoRecorder = [[VideoRecorder alloc] initWithBinaryMessenger:_messenger
@@ -486,25 +488,25 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
         int height = ((NSNumber*)argsMap[@"height"]).intValue;
         int fps = ((NSNumber*)argsMap[@"fps"]).intValue;
         NSString* trackId = argsMap[@"trackId"];
-        RTCVideoTrack* videoTrack;
-        RTCMediaStreamTrack* track = self.localTracks[trackId];
-        if (track == nil) {
+        id<LocalTrack> localTrack = self.localTracks[trackId];
+        LocalVideoTrack* videoTrack;
+        if (localTrack == nil) {
             result([FlutterError errorWithCode:@"No local track found" message:nil details:nil]);
             return;
         }
-        if ([@"video" isEqualToString:[track kind]]) {
-            videoTrack = (RTCVideoTrack*)track;
+        if ([localTrack isKindOfClass:[LocalVideoTrack class]]) {
+            videoTrack = (LocalVideoTrack*) localTrack;
         } else {
             result([FlutterError errorWithCode:@"Track is not video track" message:nil details:nil]);
             return;
         }
-        RTCVideoSource* videoSource = [videoTrack source];
+        RTCVideoSource* videoSource = [videoTrack.videoTrack source];
         [videoSource adaptOutputFormatToWidth:width height:height fps:fps];
         result(nil);
     } else if ([@"motionDetection" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         DetectionRequest* request = [DetectionRequest fromArgs:argsMap];
-        RTCVideoTrack* videoTrack = [self getFirstLocalVideoTrack];
+        LocalVideoTrack* videoTrack = [self getLocalVideoTrack];
         if (argsMap == nil || request == nil) {
             result([FlutterError errorWithCode:@"Wrong arags in motionDetection" message:nil details:nil]);
             return;
@@ -517,7 +519,7 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
             motionDetection = [[MotionDetection alloc] initWithBinaryMessenger:_messenger];
         }
         if (videoTrack != nil) {
-            [motionDetection setVideoTrackWithVideoTrack:videoTrack];
+            [motionDetection setVideoTrackWithVideoTrack:videoTrack.videoTrack];
         }
         [motionDetection setDetectionWithRequest:request];
         result(nil);
@@ -1639,28 +1641,22 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
     return mediaStreamTrack;
 }
 
--(RTCVideoTrack*) getLocalVideoTrack:(NSString*) streamId  {
-    RTCMediaStream* stream = _localStreams[streamId];
-    if (stream) {
-        for (RTCMediaStreamTrack* track in stream.videoTracks) {
-            if ([track isKindOfClass:[RTCVideoTrack class]]) {
-                return (RTCVideoTrack*)track;
-            }
-        }
-    }
-    return nil;
+-(LocalVideoTrack* _Nullable) getLocalVideoTrack  {
+  for (id<LocalTrack> track in self.localTracks.allValues) {
+      if ([track isKindOfClass:[LocalVideoTrack class]]) {
+            return (LocalVideoTrack*)track;
+      }
+  }
+  return nil;
 }
 
--(RTCAudioTrack*) getLocalAudioTrack:(NSString*) streamId  {
-    RTCMediaStream* stream = _localStreams[streamId];
-    if (stream) {
-        for (RTCMediaStreamTrack* track in stream.audioTracks) {
-            if ([track isKindOfClass:[RTCAudioTrack class]]) {
-                return (RTCAudioTrack*)track;
-            }
-        }
-    }
-    return nil;
+-(LocalAudioTrack* _Nullable) getLocalAudioTrack {
+  for (id<LocalTrack> track in self.localTracks.allValues) {
+      if ([track isKindOfClass:[LocalAudioTrack class]]) {
+        return (LocalAudioTrack*)track;
+      }
+  }
+  return nil;
 }
 
 - (RTCVideoTrack*) getRemoteVideoTrack:(NSString*) streamId  {
@@ -1726,18 +1722,6 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
       mediaStreamTrack = [track track];
   }
   return mediaStreamTrack;
-}
-
-- (RTCVideoTrack*) getFirstLocalVideoTrack {
-    if ([_localTracks count] == 0) {
-        return nil;
-    }
-    for (RTCMediaStreamTrack* track in  [_localTracks allValues]) {
-        if ( [@"video" isEqualToString:[track kind]]) {
-            return (RTCVideoTrack*) track;
-        }
-    }
-    return nil;
 }
 
 - (RTCIceServer*)RTCIceServer:(id)json {
@@ -2387,12 +2371,12 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
 
 - (void) localTrackAdded {
   NSLog(@"localTrackAdded");
-        if (motionDetection != nil) {
-                RTCVideoTrack* videoTrack = [self getFirstLocalVideoTrack];
-                if (videoTrack != nil) {
-                [motionDetection setVideoTrackWithVideoTrack:videoTrack];
-                }
-        }
+  if (motionDetection != nil) {
+      LocalVideoTrack* localVideoTrack = [self getLocalVideoTrack];
+      if (localVideoTrack != nil) {
+          [motionDetection setVideoTrackWithVideoTrack:localVideoTrack.videoTrack];
+      }
+  }
 }
 
 @end

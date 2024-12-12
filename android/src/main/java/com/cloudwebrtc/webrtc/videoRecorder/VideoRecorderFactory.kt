@@ -17,7 +17,7 @@ import org.webrtc.audio.JavaAudioDeviceModule
 
 class VideoRecorderFactory(
     binaryMessenger: BinaryMessenger,
-    private val motionDetection: MotionDetection,
+    private val motionDetection: MotionDetection?,
     private val audioDeviceModule: JavaAudioDeviceModule,
     private val applicationContext: Context
 ) : EventChannel.StreamHandler {

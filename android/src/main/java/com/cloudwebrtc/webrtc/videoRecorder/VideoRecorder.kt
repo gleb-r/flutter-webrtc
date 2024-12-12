@@ -20,7 +20,7 @@ public class VideoRecorder(
     private val audioInterceptor: AudioSamplesInterceptor?,
     private val directAudio: Boolean,
     private val withAudio: Boolean,
-    private val motionDetection: MotionDetection,
+    private val motionDetection: MotionDetection?,
     private val applicationContext: Context,
     private val onStateChange: (RecordState) -> Unit,
 
@@ -51,12 +51,12 @@ public class VideoRecorder(
         Log.d("TAG", "Start recording, file: ${videoFile.absolutePath}")
         videoTrack.addSink(videoFileRenderer)
         audioInterceptor?.attachCallback(id, videoFileRenderer)
-        motionDetection.addListener(this)
+        motionDetection?.addListener(this)
     }
 
     fun stop(): RecordingResult {
         onStateChange(RecordState.stop)
-        motionDetection.removeListener()
+        motionDetection?.removeListener()
         audioInterceptor?.detachCallback(id)
         videoTrack.removeSink(videoFileRenderer)
         // TODO: try catch
@@ -92,6 +92,7 @@ public class VideoRecorder(
     }
 
     override fun onDetect(detection: DetectionFrame) {
+        val motionDetection = this.motionDetection ?: return
         if (detection.detectedList.isEmpty()) return
         firstFrameTime?.let { time ->
             val frameIndex =
