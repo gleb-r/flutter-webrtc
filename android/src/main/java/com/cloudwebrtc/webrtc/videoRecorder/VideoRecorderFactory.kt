@@ -126,6 +126,10 @@ class VideoRecorderFactory(
         }
     }
 
+    fun dispose() {
+        // TODO:
+    }
+
     private fun sendErrorEvent(error: RecordError) {
         sendEvent(
             RecordEvent(

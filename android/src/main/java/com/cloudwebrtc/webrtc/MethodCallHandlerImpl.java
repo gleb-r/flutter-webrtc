@@ -153,6 +153,10 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
           motionDetection.dispose();
           motionDetection = null;
     }
+    if (videoRecorderFactory != null) {
+      videoRecorderFactory.dispose();
+      videoRecorderFactory = null;
+    }
     for (final MediaStream mediaStream : localStreams.values()) {
       streamDispose(mediaStream);
       mediaStream.dispose();

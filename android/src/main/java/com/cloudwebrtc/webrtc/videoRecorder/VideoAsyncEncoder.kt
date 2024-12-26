@@ -37,9 +37,9 @@ internal class VideoAsyncEncoder(
     private var drawer: GlRectDrawer? = null
 
     @Volatile
-    private var isStarted = AtomicBoolean(false)
-
-    private val isDisposed = AtomicBoolean(false)
+    private var isStarted = false
+    @Volatile
+    private var isDisposed = false
     private val TAG = "VideoEncoder"
     private val renderThread  = HandlerThread("VideoEncoder")
     private val renderHandler  by lazy {
@@ -60,7 +60,7 @@ internal class VideoAsyncEncoder(
     // TODO: create encoder state enum
 
     fun onFrame(frame: VideoFrame) {
-        if (isDisposed.get()) {
+        if (isDisposed) {
             return
         }
 
@@ -73,20 +73,21 @@ internal class VideoAsyncEncoder(
             )
             return
         }
-        if (!isStarted.get()) {
+        if (!isStarted) {
             Logging.d(
                 TAG,
                 "$currentTime Encoder is not started, skip frame"
             )
             return
         }
+        try {
+            frame.retain()
+        } catch (e: IllegalStateException) {
+            Logging.e(TAG, "$currentTime IllegalRefCountException: $e")
+            return
+        }
         renderHandler.post {
-            try {
-                frame.retain()
-            } catch (e: IllegalStateException) {
-                Logging.e(TAG, "$currentTime IllegalRefCountException: $e")
-                return@post
-            }
+
             // TODO: is size params needed?
             // TODO: could be error :"java.lang.RuntimeException: glCreateShader() failed. GLES20 error: 0"
             frameDrawer.drawFrame(
@@ -99,9 +100,13 @@ internal class VideoAsyncEncoder(
     }
 
     fun dispose() {
-        isDisposed.set(true)
-        // TODO: test stop if not started
+        isDisposed = true
+        encoder?.signalEndOfInputStream()
         encoder?.stop()
+        encoder?.setCallback(null)
+//        encoder?.flush()
+        // TODO: test stop if not started
+
         encoder?.release()
         scope.launch {
             // TODO: store it and reuse ?
@@ -158,7 +163,7 @@ internal class VideoAsyncEncoder(
             eglBase.makeCurrent()
             drawer = GlRectDrawer()
             encoder.start()
-            this@VideoAsyncEncoder.isStarted = AtomicBoolean(true)
+            this@VideoAsyncEncoder.isStarted = true
         }
     }
 
@@ -175,7 +180,7 @@ internal class VideoAsyncEncoder(
             index: Int,
             info: MediaCodec.BufferInfo
         ) {
-            if (isDisposed.get()) {
+            if (isDisposed) {
                 return
             }
             val encodedData = codec.getOutputBuffer(index)
@@ -194,7 +199,7 @@ internal class VideoAsyncEncoder(
             codec.releaseOutputBuffer(index, false)
             if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
                 Logging.d(TAG, "End of stream")
-                isDisposed.set(true)
+                isDisposed = true
             }
         }
 
