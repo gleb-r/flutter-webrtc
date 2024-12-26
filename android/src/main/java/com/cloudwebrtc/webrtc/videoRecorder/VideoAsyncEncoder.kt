@@ -3,12 +3,11 @@ package com.cloudwebrtc.webrtc.videoRecorder
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
-import android.os.Handler
-import android.os.HandlerThread
 import com.cloudwebrtc.webrtc.utils.EglUtils
 import com.cloudwebrtc.webrtc.utils.LogHelper.currentTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newSingleThreadContext
 import org.webrtc.EglBase
 import org.webrtc.GlRectDrawer
 import org.webrtc.Logging
@@ -38,15 +37,11 @@ internal class VideoAsyncEncoder(
 
     @Volatile
     private var isStarted = false
+
     @Volatile
     private var isDisposed = false
     private val TAG = "VideoEncoder"
-    private val renderThread  = HandlerThread("VideoEncoder")
-    private val renderHandler  by lazy {
-        renderThread.start()
-        Handler(renderThread.looper)
-    }
-
+    private val renderContext = newSingleThreadContext("RenderContext")
 
     internal interface OnOutputBufferListener {
         fun saveData(
@@ -86,8 +81,8 @@ internal class VideoAsyncEncoder(
             Logging.e(TAG, "$currentTime IllegalRefCountException: $e")
             return
         }
-        renderHandler.post {
-
+        scope.launch(renderContext) {
+            eglBase?.makeCurrent()
             // TODO: is size params needed?
             // TODO: could be error :"java.lang.RuntimeException: glCreateShader() failed. GLES20 error: 0"
             frameDrawer.drawFrame(
@@ -153,7 +148,7 @@ internal class VideoAsyncEncoder(
             null,
             MediaCodec.CONFIGURE_FLAG_ENCODE
         )
-        renderHandler.post {
+        scope.launch(renderContext) {
             val eglBase = EglBase.create(
                 EglUtils.getRootEglBaseContext(),
                 EglBase.CONFIG_RECORDABLE

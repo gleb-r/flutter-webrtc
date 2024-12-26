@@ -82,6 +82,7 @@ class AsyncFileRenderer(
         if (videoTrackIndex != -1 && (audioTrackIndex != -1 || !isAudioEnabled)) {
             mediaMuxer.start()
             isMuxerStarted.set(true)
+            startTimeNs = System.nanoTime()
             Logging.d(TAG, "$currentTime Muxer started")
         }
     }
@@ -121,7 +122,10 @@ class AsyncFileRenderer(
         }
 
     private val audioCallback =
-        object : AudioAsyncEncoder.OnOutputBufferListener {
+        object : AudioAsyncEncoder.Callback {
+            override fun presentationTimeUs(): Long =
+                this@AsyncFileRenderer.presentationTimeUs()
+
             override fun saveData(
                 encodedData: ByteBuffer,
                 bufferInfo: MediaCodec.BufferInfo
@@ -140,7 +144,10 @@ class AsyncFileRenderer(
                     )
                     return
                 }
-                bufferInfo.presentationTimeUs = presentationTimeUs()
+                if (bufferInfo.presentationTimeUs == 0L) {
+                    Logging.d(TAG, "Skip audio sample")
+                    return
+                }
                 mediaMuxer.writeSampleData(
                     audioTrackIndex,
                     encodedData,
@@ -171,7 +178,6 @@ class AsyncFileRenderer(
 
     private fun presentationTimeUs(): Long {
         if (startTimeNs == 0L) {
-            startTimeNs = System.nanoTime()
             return 0L
         } else {
             return (System.nanoTime() - startTimeNs) / 1000

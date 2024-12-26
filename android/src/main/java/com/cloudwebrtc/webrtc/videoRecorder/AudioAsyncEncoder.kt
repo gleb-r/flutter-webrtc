@@ -8,26 +8,30 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaRecorder
 import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.CHANNEL_COUNT
+import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.DELAY_THRESHOLD_US
 import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.MIME_TYPE_AUDIO
 import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.SAMPLE_RATE
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newSingleThreadContext
 import org.webrtc.Logging
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 
 class AudioAsyncEncoder(
     private val isLocal: Boolean,
     private val scope: CoroutineScope,
-    private val listener: OnOutputBufferListener
+    private val listener: Callback
 ) {
 
     private object AudioAsyncEncoderConst {
         const val SAMPLE_RATE = 48000
         const val CHANNEL_COUNT = 1
         const val MIME_TYPE_AUDIO: String = "audio/mp4a-latm"
+        const val DELAY_THRESHOLD_US = 40_000L
     }
 
     private val TAG = "AudioAsyncEncoder"
@@ -38,6 +42,7 @@ class AudioAsyncEncoder(
 
     @Volatile
     private var isStarted = AtomicBoolean(false)
+    private val renderContext = newSingleThreadContext("RenderContext")
 
 
     init {
@@ -57,7 +62,7 @@ class AudioAsyncEncoder(
             Logging.e(TAG, "!!! audioRecord should be null on onSamplesReady")
             return
         }
-        scope.launch {
+        scope.launch(renderContext) {
             val audioEncoder = audioEncoder
             if (audioEncoder == null) {
                 createAudioEncoder(
@@ -86,14 +91,43 @@ class AudioAsyncEncoder(
             }
             inputBuffer.clear()
             inputBuffer.put(audioSamples.data)
+            val presentationTimeUs = calculatePresentationTimeUs(audioSamples)
             audioEncoder.queueInputBuffer(
                 index,
                 0,
                 audioSamples.data.size,
-                presentationTimeUs(),
+                presentationTimeUs,
                 0
             )
         }
+    }
+
+    private var sampleTimeUs = 0L
+
+    /// because audioSamples appeared with unsustainable time interval,
+    /// we need to calculate the presentation time based on sample duration
+    private fun calculatePresentationTimeUs(audioSamples: JavaAudioDeviceModule.AudioSamples): Long {
+        val mainPresentationTimeUs = listener.presentationTimeUs()
+        if (sampleTimeUs == 0L) {
+            sampleTimeUs = mainPresentationTimeUs
+        } else {
+            sampleTimeUs += audioSamples.durationUs()
+            val diff =
+                abs(sampleTimeUs - mainPresentationTimeUs)
+            if (diff > DELAY_THRESHOLD_US) {
+                sampleTimeUs = mainPresentationTimeUs
+                Logging.d(
+                    TAG,
+                    "Difference between audio and video time is too big, update audio time"
+                )
+            }
+        }
+        return sampleTimeUs
+    }
+
+    private fun JavaAudioDeviceModule.AudioSamples.durationUs(): Long {
+        // calculate duration in microseconds form sample size and sample rate
+        return (this.data.size * 1_000_000 / sampleRate / 2).toLong()
     }
 
     fun dispose() {
@@ -188,7 +222,7 @@ class AudioAsyncEncoder(
                     0,
                     bytesRead,
                     // TODO: try to use calc value from frequency
-                    presentationTimeUs(),
+                    listener.presentationTimeUs(),
                     0
                 )
             } else {
@@ -233,23 +267,15 @@ class AudioAsyncEncoder(
         }
     }
 
-    interface OnOutputBufferListener {
+
+    interface Callback {
+
+        fun presentationTimeUs(): Long
         fun saveData(
             encodedData: ByteBuffer,
             bufferInfo: MediaCodec.BufferInfo
         )
 
         fun addTrack(mediaFormat: MediaFormat)
-    }
-
-    private var startTimeNs = 0L
-
-    private fun presentationTimeUs(): Long {
-        if (startTimeNs == 0L) {
-            startTimeNs = System.nanoTime()
-            return 0L
-        } else {
-            return (System.nanoTime() - startTimeNs) / 1000
-        }
     }
 }
