@@ -978,7 +978,7 @@ class GetUserMediaImpl {
             }
             interceptor = outputSamplesInterceptor;
         }
-        MediaRecorderImpl mediaRecorder = new MediaRecorderImpl(id, videoTrack, interceptor, null);
+        MediaRecorderImpl mediaRecorder = new MediaRecorderImpl(id, videoTrack, interceptor);
         mediaRecorder.startRecording(new File(path));
         mediaRecorders.append(id, mediaRecorder);
     }

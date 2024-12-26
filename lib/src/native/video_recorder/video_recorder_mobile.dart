@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/record_error.dart';
 import 'package:flutter_webrtc/src/native/video_recorder/record_event.dart';
@@ -49,7 +50,7 @@ class VideoRecorder extends IVideoRecorder {
   void _listenEventChannel() {
     _eventsSubscription = _eventChannel
         .receiveBroadcastStream()
-        .doOnData((event) => print('event: $event'))
+        .doOnData((event) => debugPrint('event: $event'))
         .map((event) => RecordEvent.fromMap(event))
         .listen((event) {
       switch (event.type) {

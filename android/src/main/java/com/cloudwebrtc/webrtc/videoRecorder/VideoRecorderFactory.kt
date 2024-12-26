@@ -9,9 +9,6 @@ import com.cloudwebrtc.webrtc.record.OutputAudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.webrtc.VideoTrack
 import org.webrtc.audio.JavaAudioDeviceModule
 
@@ -44,9 +41,10 @@ class VideoRecorderFactory(
         recordId: String,
         path: String,
         withAudio: Boolean,
-        isDirect: Boolean,
-        flutterResult: AnyThreadResult
-    ) {
+        isLocal: Boolean,
+        flutterResult: AnyThreadResult,
+
+        ) {
         if (videoRecorder != null) {
             flutterResult.success(false)
             return
@@ -56,37 +54,34 @@ class VideoRecorderFactory(
             flutterResult.success(false)
             return
         }
-
-        val interceptor =
-            if (withAudio && !isDirect) outputInterceptor else null
+        val audioInterceptor =
+            if (withAudio && !isLocal) outputInterceptor else null
         state = RecordState.starting
-        CoroutineScope(Dispatchers.IO).launch {
-            val videoRecorder = VideoRecorder(
-                videoTrack = videoTrack,
-                recordId = recordId,
-                path = path,
-                audioInterceptor = interceptor,
-                withAudio = withAudio,
-                directAudio = isDirect,
-                motionDetection = motionDetection,
-                applicationContext = applicationContext,
-                onStateChange = { newState ->
-                    state = newState
-                    sendEvent(
-                        RecordEvent(
-                            RecordEventType.fromState(state),
-                            null
-                        )
+        // TODO: is it necessary to use IO dispatcher?
+        val videoRecorder = VideoRecorder(
+            videoTrack = videoTrack,
+            recordId = recordId,
+            path = path,
+            audioInterceptor = audioInterceptor,
+            withAudio = withAudio,
+            isLocal = isLocal,
+            motionDetection = motionDetection,
+            applicationContext = applicationContext,
+            onStateChange = { newState ->
+                state = newState
+                sendEvent(
+                    RecordEvent(
+                        RecordEventType.fromState(state),
+                        null
                     )
-                }
-            )
-            videoRecorder.start()
-            this@VideoRecorderFactory.videoRecorder = videoRecorder
-            launch(Dispatchers.Main) {
-                flutterResult.success(true)
+                )
             }
-        }
+        )
+        videoRecorder.start()
+        this@VideoRecorderFactory.videoRecorder = videoRecorder
+        flutterResult.success(true)
     }
+
 
     fun stopRecording(flutterResult: AnyThreadResult) {
         val videoRecorder = this.videoRecorder
@@ -109,28 +104,25 @@ class VideoRecorderFactory(
             )
             return
         }
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val result = videoRecorder.stop()
-                sendEvent(
-                    RecordEvent(
-                        RecordEventType.result,
-                        result.toMap()
-                    )
+        try {
+            val result = videoRecorder.stop()
+            sendEvent(
+                RecordEvent(
+                    RecordEventType.result,
+                    result.toMap()
                 )
-                launch(Dispatchers.Main) {
-                    flutterResult.success(true)
-                }
-            } catch (err: Exception) {
-                sendErrorEvent(
-                    RecordError(
-                        "media recorder stop error",
-                        err.message
-                    )
+            )
+            flutterResult.success(true)
+        } catch (err: Exception) {
+            Log.e("VideoRecorderFactory", "stopRecording: error", err)
+            sendErrorEvent(
+                RecordError(
+                    "media recorder stop error",
+                    err.message
                 )
-            } finally {
-                this@VideoRecorderFactory.videoRecorder = null
-            }
+            )
+        } finally {
+            this.videoRecorder = null
         }
     }
 

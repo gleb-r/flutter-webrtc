@@ -16,4 +16,9 @@ class RecordError implements Exception {
   final String code;
   final String? message;
   final Map<String, dynamic>? details;
+
+  @override
+  String toString() {
+    return 'RecordError(code: $code, message: $message, details: $details)';
+  }
 }

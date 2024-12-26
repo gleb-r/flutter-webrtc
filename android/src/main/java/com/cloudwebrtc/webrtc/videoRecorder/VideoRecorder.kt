@@ -1,14 +1,11 @@
 package com.cloudwebrtc.webrtc.videoRecorder
 
-import android.content.ContentValues
 import android.content.Context
 import android.util.Log
 import com.cloudwebrtc.webrtc.detection.DetectionFrame
 import com.cloudwebrtc.webrtc.detection.MotionDetection
 import com.cloudwebrtc.webrtc.record.AudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.record.FirstFrameListener
-import com.cloudwebrtc.webrtc.record.VideoFileRenderer
-import com.cloudwebrtc.webrtc.utils.EglUtils
 import org.webrtc.VideoTrack
 import java.io.File
 import kotlin.random.Random
@@ -18,8 +15,8 @@ public class VideoRecorder(
     private val path: String,
     private val recordId: String,
     private val audioInterceptor: AudioSamplesInterceptor?,
-    private val directAudio: Boolean,
     private val withAudio: Boolean,
+    private val isLocal: Boolean,
     private val motionDetection: MotionDetection?,
     private val applicationContext: Context,
     private val onStateChange: (RecordState) -> Unit,
@@ -34,21 +31,21 @@ public class VideoRecorder(
     private val id by lazy { Random(10000).nextInt() }
 
     private var detectionData: DetectionData? = null
+    private val TAG = "VideoRecorder"
 
     private val videoFileRenderer by lazy {
-        VideoFileRenderer(
-            videoFile.absolutePath,
-            EglUtils.getRootEglBaseContext(),
-            withAudio,
-            directAudio,
-            this
+        AsyncFileRenderer(
+            path,
+            this,
+            isLocal = isLocal,
+            isAudioEnabled = withAudio
         )
     }
 
     fun start() {
         onStateChange(RecordState.starting)
         videoFile.parentFile?.mkdirs()
-        Log.d("TAG", "Start recording, file: ${videoFile.absolutePath}")
+        Log.d(TAG, "Start recording, file: ${videoFile.absolutePath}")
         videoTrack.addSink(videoFileRenderer)
         audioInterceptor?.attachCallback(id, videoFileRenderer)
         motionDetection?.addListener(this)
@@ -60,12 +57,12 @@ public class VideoRecorder(
         audioInterceptor?.detachCallback(id)
         videoTrack.removeSink(videoFileRenderer)
         // TODO: try catch
-        videoFileRenderer.release()
+        videoFileRenderer.dispose()
         val firstFrame = this.firstFrameTime
             ?: throw Exception("First frame not saved")
         val duration = System.currentTimeMillis() - firstFrame
-        Log.d("TAG", "Stop recording without content resolver")
-        val values = ContentValues(3)
+        Log.d(TAG, "Stop recording")
+//        val values = ContentValues(3)
         onStateChange(RecordState.idle)
 //        values.put(MediaStore.Video.Media.TITLE, videoFile.name)
 //        values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
