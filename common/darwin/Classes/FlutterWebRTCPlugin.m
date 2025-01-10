@@ -444,7 +444,9 @@ bypassVoiceProcessing:(BOOL)bypassVoiceProcessing {
         NSString *path = arguments[@"path"];
         NSString *peerId = arguments[@"peerId"];
         NSString *streamId = arguments[@"streamId"];
+        NSString *trackId = arguments[@"trackId"];
         NSNumber *enableAudio = arguments[@"enableAudio"];
+        // TODO: get track by Id
         LocalVideoTrack*  localVideoTrack = [self getLocalVideoTrack];
         LocalAudioTrack*  localAudioTrack = [self getLocalAudioTrack];
         RTCVideoTrack* videoTrack;

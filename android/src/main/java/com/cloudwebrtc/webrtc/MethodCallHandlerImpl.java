@@ -132,7 +132,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   private CustomVideoDecoderFactory videoDecoderFactory;
   private MotionDetection motionDetection;
 
-  private VideoRecorderFactory videoRecorderFactory;
+  private Map<String,  VideoRecorderFactory>  videoRecorderFactories = new HashMap<>();
 
   public AudioProcessingController audioProcessingController;
 
@@ -149,13 +149,13 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   }
 
   void dispose() {
+    Log.d(TAG, "main dispose");
     if (motionDetection != null) {
           motionDetection.dispose();
           motionDetection = null;
     }
-    if (videoRecorderFactory != null) {
-      videoRecorderFactory.dispose();
-      videoRecorderFactory = null;
+    for (final VideoRecorderFactory factory:  videoRecorderFactories.values()) {
+        factory.dispose();
     }
     for (final MediaStream mediaStream : localStreams.values()) {
       streamDispose(mediaStream);
@@ -370,6 +370,16 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         getUserMedia(constraintsMap, result);
         break;
       }
+      case "hotRestart":
+        if (mFactory != null) {
+          Log.d(TAG, "  traces of hotRestart found, clear prev resources");
+          dispose();
+          result.success(true);
+        } else {
+            Log.d(TAG, "  traces of hotRestart not found");
+            result.success(false);
+        }
+        break;
       case "createLocalMediaStream":
         createLocalMediaStream(result);
         break;
@@ -747,60 +757,64 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         getUserMediaImpl.stopRecording(recorderId);
         result.success(null);
         break;
-      case "startRecordVideo":
-            String videoPath = call.argument("path");
-            String recordId = call.argument("recordId");
-            String mediaStreamId = call.argument("streamId");
-            Boolean enableAudio = call.argument("enableAudio");
-            Integer detectionIntervalMs = call.argument("interval");
-            if ( mediaStreamId == null
-                    || videoPath == null
-                    || enableAudio == null
-                    || recordId == null
-            ) {
-                resultError(call.method, "Wrong arguments in method", result);
+      case "startRecordVideo": {
+        String videoPath = call.argument("path");
+        String recordId = call.argument("recordId");
+        String mediaStreamId = call.argument("streamId");
+        String recTrackId = call.argument("trackId");
+        Boolean enableAudio = call.argument("enableAudio");
+        Integer detectionIntervalMs = call.argument("interval");
+        if (mediaStreamId == null
+                || recTrackId == null
+                || videoPath == null
+                || enableAudio == null
+                || recordId == null
+        ) {
+          resultError(call.method, "Wrong arguments in method", result);
+          return;
+        }
+        VideoTrack videoTrack = getVideoTrack(recTrackId);
+        if (videoTrack == null) {
+          resultError(call.method, "Cant find video track", result);
+          return;
+        }
+        Boolean isLocal = isLocalTrack(recTrackId);
+        if (isLocal) {
+          LocalVideoTrack localVideoTrack = getLocalVideoTrack(videoTrack.id());
+          if (motionDetection == null) {
+            motionDetection = new MotionDetection(messenger);
+            motionDetection.setVideoTrack(localVideoTrack);
+          }
+        }
+        VideoRecorderFactory factory = videoRecorderFactories.get(recTrackId);
+        if (factory == null) {
+          factory = new VideoRecorderFactory(
+                  messenger,
+                  recTrackId,
+                  motionDetection,
+                  (JavaAudioDeviceModule) audioDeviceModule,
+                  context);
+          videoRecorderFactories.put(recTrackId, factory);
+        }
+        factory.startRecording(
+                videoTrack,
+                recordId,
+                videoPath,
+                enableAudio,
+                isLocal,
+                result);
+        break;
+      }
+            case "stopRecordVideo": {
+              String trackId = call.argument("trackId");
+              VideoRecorderFactory factory = videoRecorderFactories.get(trackId);
+              if (factory == null) {
+              resultError(call.method, "Video recorder for trackId: "+ trackId + "notFound", result);
                 return;
+              }
+              factory.stopRecording(result);
+              break;
             }
-
-                LocalVideoTrack localVideoTrack = getLocalVideoTrack();
-                Boolean isLocal = true;
-                VideoTrack videoTrack;
-                if (localVideoTrack != null) {
-                  videoTrack = (VideoTrack) localVideoTrack.track;
-                  if (motionDetection == null) {
-                    motionDetection = new MotionDetection(messenger);
-                    motionDetection.setVideoTrack(localVideoTrack);
-                  }
-                } else {
-                  isLocal = false;
-                  videoTrack = getRemoteVideoTrack(mediaStreamId);
-                  if (videoTrack == null) {
-                    resultError(call.method, "Cant find video track", result);
-                    return;
-                  }
-                }
-                if (videoRecorderFactory == null) {
-                    videoRecorderFactory = new VideoRecorderFactory(
-                            messenger,
-                            motionDetection,
-                            (JavaAudioDeviceModule) audioDeviceModule,
-                            context);
-                }
-                videoRecorderFactory.startRecording(
-                        videoTrack,
-                        recordId,
-                        videoPath,
-                        enableAudio,
-                        isLocal,
-                        result);
-                break;
-            case "stopRecordVideo":
-                if (videoRecorderFactory == null) {
-                    resultError(call.method, "Video recorder is not created", result);
-                    return;
-                }
-                videoRecorderFactory.stopRecording(result);
-                break;
             case "changeVideoResolution": {
                 Integer width = call.argument("width");
                 Integer height = call.argument("height");
@@ -835,7 +849,7 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
             case "motionDetection": {
                 if (motionDetection == null) {
                     motionDetection = new MotionDetection(messenger);
-                    LocalVideoTrack track = getLocalVideoTrack();
+                    LocalVideoTrack track = getLocalVideoTrack(null);
                     if (track != null) {
                         motionDetection.setVideoTrack(track);
                     }
@@ -1555,31 +1569,38 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     return mediaStreamTrack;
   }
 
-    VideoTrack getRemoteVideoTrack(String mediaStreamId) {
-        MediaStream stream = null;
-        for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers
-                .entrySet()) {
-            PeerConnectionObserver pco = entry.getValue();
-            stream = pco.remoteStreams.get(mediaStreamId);
-            if (stream != null) {
-                break;
+
+    private @Nullable VideoTrack getVideoTrack(String trackId) {
+      LocalVideoTrack localVideoTrack = getLocalVideoTrack(trackId);
+      if (localVideoTrack != null) {
+        return (VideoTrack) localVideoTrack.track;
+      }
+        for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {
+          PeerConnectionObserver pco = entry.getValue();
+          MediaStreamTrack track = pco.remoteTracks.get(trackId);
+            if (track instanceof VideoTrack) {
+                return (VideoTrack) track;
             }
         }
-        if (stream != null) {
-            return stream.videoTracks.get(0);
-        }
-        return null;
+      return null;
     }
 
-    private LocalVideoTrack getLocalVideoTrack() {
+    private Boolean isLocalTrack(String trackId) {
+        return localTracks.containsKey(trackId);
+    }
+
+    private @Nullable LocalVideoTrack getLocalVideoTrack(@Nullable String trackId) {
+      if (trackId != null) {
+        return (LocalVideoTrack) localTracks.get(trackId);
+      } else {
         for (LocalTrack track : localTracks.values()) {
-            if (track instanceof LocalVideoTrack) {
-                return (LocalVideoTrack) track;
-            }
+          if (track instanceof LocalVideoTrack) {
+            return (LocalVideoTrack) track;
+          }
         }
         return null;
+      }
     }
-
 
     private VideoTrack getRemoteVideoTrack() {
         for (Entry<String, PeerConnectionObserver> entry : mPeerConnectionObservers.entrySet()) {

@@ -13,68 +13,77 @@ import org.webrtc.GlRectDrawer
 import org.webrtc.Logging
 import org.webrtc.VideoFrame
 import org.webrtc.VideoFrameDrawer
+import org.webrtc.VideoSink
 import java.nio.ByteBuffer
-import java.util.concurrent.atomic.AtomicBoolean
 
 internal class VideoAsyncEncoder(
     private val scope: CoroutineScope,
-    private val listener: OnOutputBufferListener
-) {
+    private val callback: Callback
+) : VideoSink {
     private object VideoConst {
-        val MIME_TYPE_VIDEO: String =
-            "video/avc" // H.264 Advanced Video Coding
-        val FRAME_RATE = 30
-        val I_FRAME_INTERVAL_SEC = 1
-
-        // TODO: determine bit rate from video quality
-        val BIT_RATE = 6000000
+        // H.264 Advanced Video Coding
+        const val MIME_TYPE_VIDEO: String = "video/avc"
+        const val FRAME_RATE = 24
+        const val I_FRAME_INTERVAL_SEC = 1
     }
 
     private var encoder: MediaCodec? = null
     private var eglBase: EglBase? = null
-    private val frameDrawer = VideoFrameDrawer()
+    private var frameDrawer: VideoFrameDrawer? = null
     private var drawer: GlRectDrawer? = null
 
     @Volatile
-    private var isStarted = false
+    private var state: EncoderState = EncoderState.IDLE
+        set(value) {
+            field = value
+            Logging.d(TAG, "State changed to: $value")
+        }
 
-    @Volatile
-    private var isDisposed = false
     private val TAG = "VideoEncoder"
     private val renderContext = newSingleThreadContext("RenderContext")
 
-    internal interface OnOutputBufferListener {
+    internal interface Callback {
         fun saveData(
             encodedData: ByteBuffer,
             bufferInfo: MediaCodec.BufferInfo
         )
 
         fun addTrack(mediaFormat: MediaFormat)
+
+        fun onError(e: Exception)
     }
 
-    // TODO: create encoder state enum
+    enum class EncoderState {
+        IDLE,
+        INITIALIZING,
+        STARTING,
+        STARTED,
+        SHOULD_STOP,
+        STOPPED,
+        DISPOSED
+    }
 
-    fun onFrame(frame: VideoFrame) {
-        if (isDisposed) {
+
+    override fun onFrame(frame: VideoFrame?) {
+        if (frame == null) {
             return
         }
+        when (state) {
+            EncoderState.IDLE ->
+                initVideoEncoder(frame.rotatedWidth, frame.rotatedHeight)
 
+            EncoderState.STARTED -> drawFrame(frame)
+            EncoderState.INITIALIZING,
+            EncoderState.STARTING,
+            EncoderState.STOPPED,
+            EncoderState.SHOULD_STOP,
+            EncoderState.DISPOSED ->
+                Logging.d(TAG, " Skip frame in state: $state")
+        }
+    }
 
-        if (encoder == null) {
-            initVideoEncoder(frame.rotatedWidth, frame.rotatedHeight)
-            Logging.d(
-                TAG,
-                "$currentTime Init encoder, skip frame"
-            )
-            return
-        }
-        if (!isStarted) {
-            Logging.d(
-                TAG,
-                "$currentTime Encoder is not started, skip frame"
-            )
-            return
-        }
+    private fun drawFrame(frame: VideoFrame) {
+        frameRotation = frame.rotation
         try {
             frame.retain()
         } catch (e: IllegalStateException) {
@@ -82,10 +91,12 @@ internal class VideoAsyncEncoder(
             return
         }
         scope.launch(renderContext) {
+            // TODO:  android.opengl.GLException: eglMakeCurrent failed: 0x3000
             eglBase?.makeCurrent()
             // TODO: is size params needed?
             // TODO: could be error :"java.lang.RuntimeException: glCreateShader() failed. GLES20 error: 0"
-            frameDrawer.drawFrame(
+            frameDrawer = VideoFrameDrawer()
+            frameDrawer?.drawFrame(
                 frame,
                 drawer,
             )
@@ -94,31 +105,59 @@ internal class VideoAsyncEncoder(
         }
     }
 
+
+    var frameRotation: Int? = null
+        set(value) {
+            if (field != null && field != value) {
+                Logging.d(
+                    TAG,
+                    "!!! Frame rotation changed from $field to $value"
+                )
+                // TODO: handle rotation change
+            }
+            field = value
+        }
+
+
     fun dispose() {
-        isDisposed = true
+        if (state == EncoderState.IDLE ||
+            state == EncoderState.DISPOSED ||
+            state == EncoderState.STOPPED
+        ) {
+            return
+        }
+        if (state == EncoderState.STARTING) {
+            state = EncoderState.SHOULD_STOP
+            Logging.e(TAG, "!!!!! Dispose in STARTING state")
+            return
+        }
+        if (state == EncoderState.INITIALIZING) {
+            state = EncoderState.STOPPED
+            encoder?.release()
+            encoder = null
+            return
+        }
+        state = EncoderState.STOPPED
         encoder?.signalEndOfInputStream()
         encoder?.stop()
         encoder?.setCallback(null)
-//        encoder?.flush()
-        // TODO: test stop if not started
-
         encoder?.release()
-        scope.launch {
-            // TODO: store it and reuse ?
-            frameDrawer.release()
-            drawer?.release()
-            eglBase?.release()
-        }
+        encoder = null
+        // TODO: store it and reuse ?
+        frameDrawer?.release()
+        drawer?.release()
+        eglBase?.release()
+        state = EncoderState.DISPOSED
+        renderContext.close()
     }
 
-    private var isCreatingEncoder = AtomicBoolean(false)
 
     private fun initVideoEncoder(width: Int, height: Int) {
-        if (isCreatingEncoder.get()) {
-            Logging.d(TAG, "$currentTime Encoder is creating, skip init")
+        if (state != EncoderState.IDLE) {
+            callback.onError(AsyncFileRenderer.VideoEncoderInitWrongStateError())
             return
         }
-        isCreatingEncoder.set(true)
+        state = EncoderState.INITIALIZING
         val videoFormat = MediaFormat.createVideoFormat(
             VideoConst.MIME_TYPE_VIDEO,
             width,
@@ -128,8 +167,10 @@ internal class VideoAsyncEncoder(
             MediaFormat.KEY_COLOR_FORMAT,
             MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
         )
-        // TODO: determine bit rate
-        videoFormat.setInteger(MediaFormat.KEY_BIT_RATE, VideoConst.BIT_RATE)
+        videoFormat.setInteger(
+            MediaFormat.KEY_BIT_RATE,
+            calculateBitrate(width, height)
+        )
         videoFormat.setInteger(
             MediaFormat.KEY_FRAME_RATE,
             VideoConst.FRAME_RATE
@@ -149,6 +190,10 @@ internal class VideoAsyncEncoder(
             MediaCodec.CONFIGURE_FLAG_ENCODE
         )
         scope.launch(renderContext) {
+            if (state != EncoderState.INITIALIZING) {
+                return@launch
+            }
+            state = EncoderState.STARTING
             val eglBase = EglBase.create(
                 EglUtils.getRootEglBaseContext(),
                 EglBase.CONFIG_RECORDABLE
@@ -158,8 +203,18 @@ internal class VideoAsyncEncoder(
             eglBase.makeCurrent()
             drawer = GlRectDrawer()
             encoder.start()
-            this@VideoAsyncEncoder.isStarted = true
+            if (state == EncoderState.SHOULD_STOP) {
+                dispose()
+                return@launch
+            }
+            state = EncoderState.STARTED
         }
+    }
+
+    private fun calculateBitrate(width: Int, height: Int): Int {
+        val bbp = 0.1
+        val pixelPerSecond = 30 * width * height
+        return (pixelPerSecond * bbp).toInt()
     }
 
     private val videoCallback = object : MediaCodec.Callback() {
@@ -175,7 +230,7 @@ internal class VideoAsyncEncoder(
             index: Int,
             info: MediaCodec.BufferInfo
         ) {
-            if (isDisposed) {
+            if (state != EncoderState.STARTED) {
                 return
             }
             val encodedData = codec.getOutputBuffer(index)
@@ -187,14 +242,19 @@ internal class VideoAsyncEncoder(
             if (info.size != 0) {
                 encodedData.position(info.offset)
                 encodedData.limit(info.offset + info.size)
-                listener.saveData(encodedData, info)
+                callback.saveData(encodedData, info)
             } else {
                 Logging.e(TAG, "Output buffer size is 0")
             }
-            codec.releaseOutputBuffer(index, false)
+            try {
+                codec.releaseOutputBuffer(index, false)
+            } catch (e: IllegalStateException) {
+                Logging.e(TAG, "$currentTime Release output buffer error: $e")
+            }
+
             if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
                 Logging.d(TAG, "End of stream")
-                isDisposed = true
+                state = EncoderState.STOPPED
             }
         }
 
@@ -202,19 +262,14 @@ internal class VideoAsyncEncoder(
             codec: MediaCodec,
             e: MediaCodec.CodecException
         ) {
-            // TODO: handle error
-            Logging.e(TAG, "$currentTime MediaCodec error: $e")
+            callback.onError(e)
         }
 
         override fun onOutputFormatChanged(
             codec: MediaCodec,
             format: MediaFormat
         ) {
-            Logging.d(
-                TAG,
-                "$currentTime Output format changed: $format"
-            )
-            listener.addTrack(format)
+            callback.addTrack(format)
         }
     }
 }

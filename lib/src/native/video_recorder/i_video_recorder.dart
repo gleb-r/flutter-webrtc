@@ -24,6 +24,7 @@ abstract class IVideoRecorder {
   final Function(RTCRecordResult result) onRecorded;
 
   DetectionData? detectionOnVideo;
+  String? recTrackId;
 
   Future<void> dispose() async {
     if (stateSubject.value.isRecording) {

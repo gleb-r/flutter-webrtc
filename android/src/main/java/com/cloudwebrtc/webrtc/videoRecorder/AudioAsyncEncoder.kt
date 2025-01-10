@@ -7,6 +7,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaRecorder
+import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.BIT_RATE
 import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.CHANNEL_COUNT
 import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.DELAY_THRESHOLD_US
 import com.cloudwebrtc.webrtc.videoRecorder.AudioAsyncEncoder.AudioAsyncEncoderConst.MIME_TYPE_AUDIO
@@ -15,7 +16,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
 import org.webrtc.Logging
-import org.webrtc.audio.JavaAudioDeviceModule
+import org.webrtc.audio.JavaAudioDeviceModule.AudioSamples
+import org.webrtc.audio.JavaAudioDeviceModule.SamplesReadyCallback
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -25,12 +27,15 @@ class AudioAsyncEncoder(
     private val isLocal: Boolean,
     private val scope: CoroutineScope,
     private val listener: Callback
-) {
+) : SamplesReadyCallback {
 
     private object AudioAsyncEncoderConst {
         const val SAMPLE_RATE = 48000
         const val CHANNEL_COUNT = 1
         const val MIME_TYPE_AUDIO: String = "audio/mp4a-latm"
+
+        // 64 kbps bitrate - middle quality from mono 48 kHz audio
+        const val BIT_RATE = 64 * 1024
         const val DELAY_THRESHOLD_US = 40_000L
     }
 
@@ -45,21 +50,13 @@ class AudioAsyncEncoder(
     private val renderContext = newSingleThreadContext("RenderContext")
 
 
-    init {
-        if (isLocal) {
-            initializeLocal()
-        }
-    }
-
-    fun onSamplesReady(audioSamples: JavaAudioDeviceModule.AudioSamples) {
-        Logging.d(TAG, "onSamplesReady()")
+    override fun onWebRtcAudioRecordSamplesReady(audioSamples: AudioSamples) {
         if (isDisposed.get()) {
-            Logging.e(TAG, "onSamplesReady: isDisposed")
             return
         }
 
         if (audioRecord != null) {
-            Logging.e(TAG, "!!! audioRecord should be null on onSamplesReady")
+            listener.onError(AsyncFileRenderer.AudioRecordWhenSamplesInterceptedError())
             return
         }
         scope.launch(renderContext) {
@@ -69,21 +66,9 @@ class AudioAsyncEncoder(
                     audioSamples.sampleRate,
                     audioSamples.channelCount
                 )
-                Logging.d(
-                    TAG,
-                    "Audio encoder is null, create new one. skip sample"
-                )
                 return@launch
             }
-            if (!isStarted.get()) {
-                Logging.d(TAG, "Encoder is not started, skip sample")
-                return@launch
-            }
-            val index = inputBufferIndexQueue.poll()
-            if (index == null) {
-                Logging.e(TAG, "!!!! Index is null, skip sample")
-                return@launch
-            }
+            val index = inputBufferIndexQueue.poll() ?: return@launch
             val inputBuffer = audioEncoder.getInputBuffer(index)
             if (inputBuffer == null) {
                 Logging.e(TAG, "Input buffer is null")
@@ -104,9 +89,10 @@ class AudioAsyncEncoder(
 
     private var sampleTimeUs = 0L
 
-    /// because audioSamples appeared with unsustainable time interval,
-    /// we need to calculate the presentation time based on sample duration
-    private fun calculatePresentationTimeUs(audioSamples: JavaAudioDeviceModule.AudioSamples): Long {
+    /// because audioSamples appeared with unsustainable time interval, but have known duration
+    /// we can to calculate the presentation time by incrementing the previous time by the duration
+    /// if sampleTimeUs go to far from the main presentation time, we update it
+    private fun calculatePresentationTimeUs(audioSamples: AudioSamples): Long {
         val mainPresentationTimeUs = listener.presentationTimeUs()
         if (sampleTimeUs == 0L) {
             sampleTimeUs = mainPresentationTimeUs
@@ -125,7 +111,7 @@ class AudioAsyncEncoder(
         return sampleTimeUs
     }
 
-    private fun JavaAudioDeviceModule.AudioSamples.durationUs(): Long {
+    private fun AudioSamples.durationUs(): Long {
         // calculate duration in microseconds form sample size and sample rate
         return (this.data.size * 1_000_000 / sampleRate / 2).toLong()
     }
@@ -138,10 +124,16 @@ class AudioAsyncEncoder(
         audioRecord?.release()
         audioEncoder?.stop()
         audioEncoder?.release()
+        renderContext.close()
     }
 
     @SuppressLint("MissingPermission")
-    private fun initializeLocal() {
+    fun initializeLocal() {
+        val bufferSize = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
         val audioRecord = AudioRecord.Builder()
             .setAudioSource(MediaRecorder.AudioSource.DEFAULT)
             .setAudioFormat(
@@ -151,14 +143,14 @@ class AudioAsyncEncoder(
                     .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
                     .build()
             )
-            // TODO: from AudioRecord.getMinBufferSize()
-            .setBufferSizeInBytes(SAMPLE_RATE * 2)
+            .setBufferSizeInBytes(bufferSize)
             .build()
 
-        audioRecord.startRecording()
+
         this.audioRecord = audioRecord
         scope.launch {
             createAudioEncoder(SAMPLE_RATE, CHANNEL_COUNT)
+            audioRecord.startRecording()
             // TODO: start audioRecord here?
         }
     }
@@ -177,8 +169,10 @@ class AudioAsyncEncoder(
             sampleRate,
             channelCount
         )
-        // TODO: determine bit rate
-        audioFormat.setInteger(MediaFormat.KEY_BIT_RATE, 64 * 1024)
+        audioFormat.setInteger(
+            MediaFormat.KEY_BIT_RATE,
+            BIT_RATE
+        )
         audioFormat.setInteger(
             MediaFormat.KEY_AAC_PROFILE,
             MediaCodecInfo.CodecProfileLevel.AACObjectLC
@@ -209,29 +203,29 @@ class AudioAsyncEncoder(
                 return
             }
             inputBuffer.clear()
-            val audioRecord = audioRecord
-            if (audioRecord == null) {
-                Logging.e(TAG, "!!! audioRecord is null")
-                return
-            }
-            val bytesRead =
-                audioRecord.read(inputBuffer, inputBuffer.remaining())
-            if (bytesRead > 0) {
+            val audioRecord = audioRecord ?: return
+            val bytesRead = audioRecord.read(
+                inputBuffer,
+                inputBuffer.remaining()
+            )
+            if (bytesRead == 0) {
                 codec.queueInputBuffer(
                     index,
                     0,
-                    bytesRead,
-                    // TODO: try to use calc value from frequency
+                    0,
                     listener.presentationTimeUs(),
-                    0
+                    MediaCodec.BUFFER_FLAG_END_OF_STREAM
                 )
-            } else {
-                Logging.e(
-                    TAG,
-                    "!!!readData: read audioRecord failed, bytesRead: $bytesRead"
-                )
+                listener.onError(AsyncFileRenderer.AudioRecordNoDataError())
+                return
             }
-            // TODO: EOS flag
+            codec.queueInputBuffer(
+                index,
+                0,
+                bytesRead,
+                listener.presentationTimeUs(),
+                0
+            )
         }
 
         override fun onOutputBufferAvailable(
@@ -252,30 +246,28 @@ class AudioAsyncEncoder(
         }
 
         override fun onError(codec: MediaCodec, e: MediaCodec.CodecException) {
-            // TODO: send Do something
+            listener.onError(e)
         }
 
         override fun onOutputFormatChanged(
             codec: MediaCodec,
             format: MediaFormat
         ) {
-            Logging.d(
-                TAG,
-                "Output format changed: $format"
-            )
             listener.addTrack(format)
         }
     }
 
 
     interface Callback {
-
         fun presentationTimeUs(): Long
+
         fun saveData(
             encodedData: ByteBuffer,
             bufferInfo: MediaCodec.BufferInfo
         )
 
         fun addTrack(mediaFormat: MediaFormat)
+
+        fun onError(e: Exception)
     }
 }

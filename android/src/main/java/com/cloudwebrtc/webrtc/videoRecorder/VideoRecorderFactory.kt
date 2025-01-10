@@ -5,32 +5,29 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.cloudwebrtc.webrtc.detection.MotionDetection
-import com.cloudwebrtc.webrtc.record.OutputAudioSamplesInterceptor
 import com.cloudwebrtc.webrtc.utils.AnyThreadResult
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import org.webrtc.VideoTrack
 import org.webrtc.audio.JavaAudioDeviceModule
+import java.io.File
 
 class VideoRecorderFactory(
     binaryMessenger: BinaryMessenger,
+    val videoTrackId: String,
     private val motionDetection: MotionDetection?,
     private val audioDeviceModule: JavaAudioDeviceModule,
     private val applicationContext: Context
 ) : EventChannel.StreamHandler {
 
-    private val eventChannel = EventChannel(
+    private val eventChannel: EventChannel = EventChannel(
         binaryMessenger,
-        //TODO: Rename channel
-        "FlutterWebRTC/detectionOnVideo"
+        "FlutterWebRTC/record_event/${videoTrackId}"
     )
     private var eventSink: EventChannel.EventSink? = null
-    private var videoRecorder: VideoRecorder? = null
-    private var state = RecordState.idle
+    private var videoRecorder: AsyncFileRenderer? = null
+    private val TAG = "VideoRecorderFactory"
 
-    private val outputInterceptor by lazy {
-        OutputAudioSamplesInterceptor(audioDeviceModule)
-    }
 
     init {
         eventChannel.setStreamHandler(this)
@@ -43,43 +40,38 @@ class VideoRecorderFactory(
         withAudio: Boolean,
         isLocal: Boolean,
         flutterResult: AnyThreadResult,
-
-        ) {
+    ) {
         if (videoRecorder != null) {
+            Log.e(
+                TAG,
+                "Recording is already started"
+            )
+            eventSink?.error(
+                "startRecording error",
+                "recording is already started",
+                null
+            )
             flutterResult.success(false)
             return
         }
-        if (state != RecordState.idle) {
-            Log.e("VideoRecorderFactory", "startRecording: state: $state")
-            flutterResult.success(false)
-            return
-        }
-        val audioInterceptor =
-            if (withAudio && !isLocal) outputInterceptor else null
-        state = RecordState.starting
-        // TODO: is it necessary to use IO dispatcher?
-        val videoRecorder = VideoRecorder(
-            videoTrack = videoTrack,
+        videoRecorder = AsyncFileRenderer(
+            path = getCorrectPath(path),
             recordId = recordId,
-            path = path,
-            audioInterceptor = audioInterceptor,
-            withAudio = withAudio,
+            audioDeviceModule = audioDeviceModule,
+            videoTrack = videoTrack,
             isLocal = isLocal,
+            isAudioEnabled = withAudio,
             motionDetection = motionDetection,
-            applicationContext = applicationContext,
-            onStateChange = { newState ->
-                state = newState
-                sendEvent(
-                    RecordEvent(
-                        RecordEventType.fromState(state),
-                        null
-                    )
-                )
-            }
+            listener = recorderListener
         )
-        videoRecorder.start()
-        this@VideoRecorderFactory.videoRecorder = videoRecorder
+        videoRecorder?.start()
         flutterResult.success(true)
+    }
+
+    private fun getCorrectPath(path: String): String {
+        val videoFile = File(path)
+        videoFile.parentFile?.mkdirs()
+        return videoFile.absolutePath
     }
 
 
@@ -93,19 +85,9 @@ class VideoRecorderFactory(
             )
             return
         }
-        // TODO: stop when starting state
-        if (state != RecordState.recording) {
-            Log.e("VideoRecorderFactory", "stopRecording: state: $state")
-            sendErrorEvent(
-                RecordError(
-                    "stopRecording error",
-                    "recording is not started",
-                )
-            )
-            return
-        }
-        try {
-            val result = videoRecorder.stop()
+        val result = videoRecorder.stop()
+        this.videoRecorder = null
+        if (result != null) {
             sendEvent(
                 RecordEvent(
                     RecordEventType.result,
@@ -113,21 +95,65 @@ class VideoRecorderFactory(
                 )
             )
             flutterResult.success(true)
-        } catch (err: Exception) {
-            Log.e("VideoRecorderFactory", "stopRecording: error", err)
-            sendErrorEvent(
-                RecordError(
-                    "media recorder stop error",
-                    err.message
-                )
-            )
-        } finally {
-            this.videoRecorder = null
+        } else {
+            // TODO: send error
         }
     }
 
     fun dispose() {
-        // TODO:
+        videoRecorder?.stop()
+        videoRecorder = null
+    }
+
+    // CRUTCH: for old android devices (api < 30)
+    // if error occurs with audio recording, we recreate recorder without audio
+    private fun recreateRecorderWithoutAudio() {
+        val oldRecorder = this.videoRecorder ?: return
+        val path = oldRecorder.path
+        val recordId = oldRecorder.recordId
+        val videoTrack = oldRecorder.videoTrack
+        val isLocal = oldRecorder.isLocal
+        oldRecorder.stop()
+        // TODO: maybe delay needed
+        File(path).delete()
+        this.videoRecorder = null
+
+        videoRecorder = AsyncFileRenderer(
+            path = getCorrectPath(path),
+            recordId = recordId,
+            audioDeviceModule = audioDeviceModule,
+            videoTrack = videoTrack,
+            isLocal = isLocal,
+            isAudioEnabled = false,
+            motionDetection = motionDetection,
+            listener = recorderListener
+        )
+        videoRecorder?.start()
+    }
+
+    private val recorderListener = object : AsyncFileRenderer.Callback {
+        override fun onStateChange(state: RecordState) {
+            sendEvent(
+                RecordEvent(
+                    RecordEventType.fromState(state),
+                    null
+                )
+            )
+        }
+
+        override fun onError(e: Exception) {
+            Log.e(TAG, "recorderListener onError: $e")
+            if (e is AsyncFileRenderer.AudioRecordNoDataError) {
+                recreateRecorderWithoutAudio()
+            }
+            sendErrorEvent(
+                RecordError(
+                    "recording error",
+                    e.message ?: e.toString(),
+                )
+            )
+
+        }
     }
 
     private fun sendErrorEvent(error: RecordError) {
@@ -142,7 +168,6 @@ class VideoRecorderFactory(
     private fun sendEvent(recordEvent: RecordEvent) {
         Handler(Looper.getMainLooper()).post {
             eventSink?.success(recordEvent.toMap())
-            Log.i("RecodingFactory", "sendEvent: $recordEvent")
         }
     }
 

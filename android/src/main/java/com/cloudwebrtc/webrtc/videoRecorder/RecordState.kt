@@ -4,5 +4,5 @@ enum class RecordState {
     idle,
     starting,
     recording,
-    stop,
+    disposing,
 }

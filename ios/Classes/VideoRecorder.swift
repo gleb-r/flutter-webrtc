@@ -53,6 +53,7 @@ public class VideoRecorder:NSObject {
     
     
     @objc public init(binaryMessenger: FlutterBinaryMessenger, motionDetection: MotionDetection) {
+    // TODO: change channel name  to FlutterWebRTC/record_event/$streamId
         eventChannel = FlutterEventChannel(
             name: "FlutterWebRTC/detectionOnVideo",
             binaryMessenger: binaryMessenger)

@@ -32,6 +32,10 @@ class WebRTC {
     );
   }
 
+  static Future<bool?> hotRestart() {
+    return _channel.invokeMethod<bool>('hotRestart');
+  }
+
   static bool initialized = false;
 
   /// Initialize the WebRTC plugin. If this is not manually called, will be
